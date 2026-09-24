@@ -21,6 +21,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.withStarted
 import com.github.jksiezni.xpra.client.ConnectionEventListener
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.config.ConfigDatabase
@@ -31,6 +32,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.IOException
 
@@ -92,9 +94,11 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
 
     override fun onConnectionError(serverDetails: ServerDetails, e: IOException) {
         Timber.e(e)
-        lifecycleScope.launchWhenStarted {
-            binding.connectProgressBar.visibility = View.GONE
-            binding.connectionLabel.text = e.message
+        lifecycleScope.launch {
+            withStarted {
+                binding.connectProgressBar.visibility = View.GONE
+                binding.connectionLabel.text = e.message
+            }
         }
     }
 

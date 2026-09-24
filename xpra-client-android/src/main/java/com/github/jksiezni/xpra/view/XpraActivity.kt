@@ -24,6 +24,8 @@ import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.client.*
 import com.github.jksiezni.xpra.client.AndroidXpraWindow.XpraWindowListener
@@ -48,6 +50,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         serviceBinderFragment = ServiceBinderFragment.obtain(this)
         binding = ActivityXpraBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setupEdgeToEdge(this, binding.root, binding.toolbar)
         if (!isValidXpraActivityIntent(intent)) {
             finish()
             return
@@ -76,7 +79,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         val list = mutableListOf<AndroidXpraWindow>()
         list.addAll(rootWindow.children)
         while (list.isNotEmpty()) {
-            val child = list.removeFirst()
+            val child = list.removeAt(0)
             val proxyView = ProxyView(this, child)
             binding.workspaceView.addView(proxyView)
             child.addWindowListener(XpraWindowHandler(proxyView))
@@ -125,14 +128,15 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     private fun toggleKeyboard(view: View?) {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         if (view != null) {
-            if (!imm.isActive(view)) {
+            val imeVisible = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            if (!imm.isActive(view) || !imeVisible) {
                 view.isFocusable = true
                 view.isFocusableInTouchMode = true
                 if (view.requestFocus()) {
                     imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
                 }
             } else {
-                imm.toggleSoftInput(0, 0)
+                imm.hideSoftInputFromWindow(view.windowToken, 0)
             }
         }
     }

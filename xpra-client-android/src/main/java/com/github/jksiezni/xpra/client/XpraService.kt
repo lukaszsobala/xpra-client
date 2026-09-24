@@ -22,12 +22,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.BitmapFactory
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.github.jksiezni.xpra.MainActivity
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.config.ConnectionType
@@ -152,15 +154,15 @@ class XpraService : Service() {
                 .setContentText(getString(R.string.connected_to, serverDetails.name))
                 .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentIntent(PendingIntent.getActivity(this, 2, mainIntent, PendingIntent.FLAG_UPDATE_CURRENT))
+                .setContentIntent(PendingIntent.getActivity(this, 2, mainIntent, PENDING_INTENT_FLAGS))
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, getString(R.string.disconnect),
-                        PendingIntent.getService(this, 1, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT))
+                        PendingIntent.getService(this, 1, stopIntent, PENDING_INTENT_FLAGS))
                 .build()
-        startForeground(1, notification)
+        ServiceCompat.startForeground(this, 1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
     }
 
     private fun onDisconnect(serverDetails: ServerDetails) {
-        stopForeground(true)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
@@ -239,5 +241,6 @@ class XpraService : Service() {
     companion object {
         private const val CHANNEL_ID = "service_channel"
         private const val ACTION_STOP = "action_stop"
+        private const val PENDING_INTENT_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }

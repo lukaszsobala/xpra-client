@@ -18,15 +18,27 @@
 
 package com.github.jksiezni.xpra;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 
 import com.github.jksiezni.xpra.config.ServersListFragment;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import timber.log.Timber;
 
+import static com.github.jksiezni.xpra.view.EdgeToEdgeInsets.setupEdgeToEdge;
+
 public class MainActivity extends AppCompatActivity {
+
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+        registerForActivityResult(new ActivityResultContracts.RequestPermission(),
+            granted -> Timber.i("POST_NOTIFICATIONS permission granted: %b", granted));
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
         // Set the custom toolbar
         final Toolbar toolbar = findViewById(R.id.my_toolbar);
         setSupportActionBar(toolbar);
+        setupEdgeToEdge(this, findViewById(R.id.root), toolbar);
 
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
@@ -44,13 +57,19 @@ public class MainActivity extends AppCompatActivity {
         }
         getSupportFragmentManager().addOnBackStackChangedListener(this::shouldDisplayNavigateUp);
         shouldDisplayNavigateUp();
+
+        if (savedInstanceState == null) {
+            requestNotificationPermission();
+        }
     }
 
-    @Override
-    public void onBackPressed() {
-        Timber.v("onBackPressed()");
-        if (!getSupportFragmentManager().popBackStackImmediate()) {
-            super.onBackPressed();
+    /**
+     * Since Android 13, the notification shown while connected requires a runtime permission.
+     */
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
         }
     }
 
