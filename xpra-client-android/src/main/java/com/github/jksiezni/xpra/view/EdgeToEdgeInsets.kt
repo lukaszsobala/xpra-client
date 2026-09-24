@@ -35,8 +35,8 @@ import kotlin.math.max
  * is padded for the remaining bars, display cutouts and the soft keyboard.
  */
 fun setupEdgeToEdge(activity: ComponentActivity, root: View, appBar: View) {
-    // the app uses a light theme only, so always use dark system bar icons
-    val barStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+    // dark system bar icons on the light theme, light ones on the dark theme
+    val barStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
     activity.enableEdgeToEdge(barStyle, barStyle)
 
     ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->

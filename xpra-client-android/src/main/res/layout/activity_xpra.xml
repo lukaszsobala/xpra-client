@@ -29,7 +29,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/colorPrimary"
-        android:minHeight="?attr/actionBarSize" />
+        android:minHeight="@dimen/compact_toolbar_height"
+        android:theme="@style/ThemeOverlay.Xpra.CompactToolbar"
+        app:titleTextAppearance="@style/TextAppearance.Xpra.CompactToolbarTitle" />
 
     <com.github.jksiezni.xpra.view.WorkspaceView
         android:id="@+id/workspaceView"

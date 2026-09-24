@@ -22,6 +22,12 @@
     tools:context="com.github.jksiezni.xpra.view.XpraActivity" >
 
     <item
+        android:id="@+id/action_touchpad"
+        android:icon="@drawable/ic_baseline_mouse_24"
+        android:orderInCategory="100"
+        android:title="@string/touchpad_mode"
+        app:showAsAction="ifRoom"/>
+    <item
         android:id="@+id/action_keyboard"
         android:icon="@drawable/ic_baseline_keyboard_24"
         android:orderInCategory="100"

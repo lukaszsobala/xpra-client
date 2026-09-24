@@ -17,12 +17,14 @@
  */
 package com.github.jksiezni.xpra.view
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -58,6 +60,8 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         }
         windowId = getWindowId(intent)
         setSupportActionBar(binding.toolbar)
+        binding.workspaceView.touchpadMode = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(PREF_TOUCHPAD_MODE, false)
 
         serviceBinderFragment.whenXpraAvailable { api ->
             val rootWindow = api.xpraClient.getWindow(windowId)
@@ -110,11 +114,41 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.xpra_menu, menu)
+        updateTouchpadItem(menu.findItem(R.id.action_touchpad))
         return true
+    }
+
+    /**
+     * Shows the mode the button switches to.
+     */
+    private fun updateTouchpadItem(item: MenuItem?) {
+        item ?: return
+        if (binding.workspaceView.touchpadMode) {
+            item.setIcon(R.drawable.ic_baseline_touch_app_24)
+            item.setTitle(R.string.direct_touch_mode)
+        } else {
+            item.setIcon(R.drawable.ic_baseline_mouse_24)
+            item.setTitle(R.string.touchpad_mode)
+        }
+    }
+
+    private fun toggleTouchpadMode(item: MenuItem) {
+        val touchpad = !binding.workspaceView.touchpadMode
+        binding.workspaceView.touchpadMode = touchpad
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(PREF_TOUCHPAD_MODE, touchpad)
+            .apply()
+        updateTouchpadItem(item)
+        Toast.makeText(this, if (touchpad) R.string.touchpad_mode_on else R.string.direct_touch_mode_on,
+            Toast.LENGTH_SHORT).show()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_touchpad -> {
+                toggleTouchpadMode(item)
+                true
+            }
             R.id.action_keyboard -> {
                 toggleKeyboard(binding.workspaceView)
                 true
@@ -198,4 +232,9 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         }
     }
 
+
+    private companion object {
+        const val PREFS_NAME = "view_settings"
+        const val PREF_TOUCHPAD_MODE = "touchpad_mode"
+    }
 }
