@@ -76,6 +76,14 @@ public class HelloRequest extends xpra.protocol.IOPacket {
         // it is required, if client wants to display windows (since 4.x)
         caps.put("windows", true);
 
+        // without it, servers silently ignore all pointer events:
+        final Map<String, Object> doubleClick = new LinkedHashMap<>();
+        doubleClick.put("time", -1);
+        doubleClick.put("distance", Arrays.asList(-1, -1));
+        final Map<String, Object> pointer = new LinkedHashMap<>();
+        pointer.put("double_click", doubleClick);
+        caps.put("pointer", pointer);
+
         // "core" lists what we can decode, "options" what users can choose, where "rgb" means rgb24 or rgb32:
         final List<String> coreEncodings = Arrays.asList(PictureEncoding.toString(encodings));
         final List<String> options = new ArrayList<>();

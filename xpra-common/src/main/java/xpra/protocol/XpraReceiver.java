@@ -95,9 +95,14 @@ public class XpraReceiver {
         Builder<Packet> builder = PACKETS_MAP.get(type);
         if (builder != null) {
             Packet packet = builder.build();
-            packet.deserialize(it);
-            logger.trace("onReceive(): " + packet);
-            process(packet);
+            try {
+                packet.deserialize(it);
+                logger.trace("onReceive(): " + packet);
+                process(packet);
+            } catch (RuntimeException e) {
+                // an unexpected packet format should not bring down the whole connection
+                logger.error("Failed to process packet: " + type, e);
+            }
         } else if (IGNORED_PACKETS.contains(type)) {
             logger.debug("Ignoring packet: " + type);
         } else {

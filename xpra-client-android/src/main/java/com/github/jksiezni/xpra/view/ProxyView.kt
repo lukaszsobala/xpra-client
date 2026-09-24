@@ -89,11 +89,14 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
             val scale = window.scale
             val x = (max(event.x, 0f) / scale).toInt()
             val y = (max(event.y, 0f) / scale).toInt()
-            when (event.action) {
-                MotionEvent.ACTION_DOWN ->
+            // a touch is a left click, and moving the finger drags the pointer with the button held down
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    window.movePointer(x, y)
                     window.mouseAction(1, true, x, y)
-                MotionEvent.ACTION_MOVE -> window.mouseAction(1, true, x, y)
-                MotionEvent.ACTION_UP -> window.mouseAction(1, false, x, y)
+                }
+                MotionEvent.ACTION_MOVE -> window.movePointer(x, y)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> window.mouseAction(1, false, x, y)
             }
             return true
         }
