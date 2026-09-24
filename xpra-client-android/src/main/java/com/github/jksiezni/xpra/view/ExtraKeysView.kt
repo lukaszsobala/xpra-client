@@ -51,7 +51,7 @@ class ExtraKeysView @JvmOverloads constructor(context: Context, attrs: Attribute
             updateModifiers()
         }
 
-    private class Key(val label: String, val keysym: String, val modifier: Boolean = false)
+    private class Key(val label: String, val keysym: String, val modifier: Boolean = false, val icon: Int = 0)
 
     private val keys = listOf(
         Key("Esc", "Escape"),
@@ -60,10 +60,10 @@ class ExtraKeysView @JvmOverloads constructor(context: Context, attrs: Attribute
         Key("Alt", "Alt_L", true),
         Key("Super", "Super_L", true),
         Key("Shift", "Shift_L", true),
-        Key("←", "Left"),
-        Key("↓", "Down"),
-        Key("↑", "Up"),
-        Key("→", "Right"),
+        Key("Left", "Left", icon = R.drawable.ic_key_left_24),
+        Key("Down", "Down", icon = R.drawable.ic_key_down_24),
+        Key("Up", "Up", icon = R.drawable.ic_key_up_24),
+        Key("Right", "Right", icon = R.drawable.ic_key_right_24),
         Key("Home", "Home"),
         Key("End", "End"),
         Key("PgUp", "Prior"),
@@ -81,23 +81,33 @@ class ExtraKeysView @JvmOverloads constructor(context: Context, attrs: Attribute
             gravity = Gravity.CENTER_VERTICAL
         }
         val spacing = dp(2)
+        row.setPadding(0, dp(2), 0, dp(2))
         for (key in keys) {
             val button = MaterialButton(context, null,
                 if (key.modifier) com.google.android.material.R.attr.materialButtonOutlinedStyle
                 else androidx.appcompat.R.attr.borderlessButtonStyle).apply {
-                text = key.label
+                if (key.icon != 0) {
+                    // the arrows: icons, which cannot be mistaken for the backspace key
+                    setIconResource(key.icon)
+                    iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+                    iconPadding = 0
+                    iconSize = dp(20)
+                } else {
+                    text = key.label
+                }
                 isAllCaps = false
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                minWidth = dp(48)
-                minimumWidth = dp(48)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                minWidth = dp(44)
+                minimumWidth = dp(44)
                 minHeight = 0
                 minimumHeight = 0
                 insetTop = 0
                 insetBottom = 0
+                cornerRadius = dp(8)
                 setPadding(dp(8), 0, dp(8), 0)
                 // the keyboard must stay attached to the window, not move to the buttons:
                 isFocusable = false
-                contentDescription = key.keysym
+                contentDescription = key.label
             }
             if (key.modifier) {
                 button.isCheckable = true
@@ -118,7 +128,7 @@ class ExtraKeysView @JvmOverloads constructor(context: Context, attrs: Attribute
                     updateModifiers()
                 }
             }
-            row.addView(button, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(40)).apply {
+            row.addView(button, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(32)).apply {
                 marginStart = spacing
                 marginEnd = spacing
             })
