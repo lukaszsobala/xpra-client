@@ -20,6 +20,7 @@ package com.github.jksiezni.xpra.view
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -28,6 +29,8 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.client.*
@@ -54,13 +57,16 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         serviceBinderFragment = ServiceBinderFragment.obtain(this)
         binding = ActivityXpraBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setupEdgeToEdge(this, binding.root, binding.toolbar)
+        setupEdgeToEdge(this, binding.root, binding.toolbar) { imeVisible ->
+            binding.extraKeys.visibility = if (imeVisible) View.VISIBLE else View.GONE
+        }
         if (!isValidXpraActivityIntent(intent)) {
             finish()
             return
         }
         windowId = getWindowId(intent)
         setSupportActionBar(binding.toolbar)
+        setupLandscape()
         binding.workspaceView.touchpadMode = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean(PREF_TOUCHPAD_MODE, false)
 
@@ -78,10 +84,38 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             // the activity is created again when the device rotates:
             api.xpraClient.updateDesktopSize(resources.displayMetrics)
             restoreProxyViewHierarchy(rootWindow)
-            binding.workspaceView.keyboardInput = KeyboardInput(rootWindow)
+            val keyboardInput = KeyboardInput(rootWindow)
+            binding.workspaceView.keyboardInput = keyboardInput
+            binding.extraKeys.keyboardInput = keyboardInput
             binding.workspaceView.requestFocus()
             setResult(RESULT_OK)
         }
+    }
+
+    /**
+     * Landscape screens are short: go full screen, with the system bars shown by a swipe from
+     * the edge, and hide the toolbar behind a small handle.
+     */
+    private fun setupLandscape() {
+        if (resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            return
+        }
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+        binding.toolbarHandle.visibility = View.VISIBLE
+        setToolbarShown(false)
+        binding.toolbarHandle.setOnClickListener {
+            setToolbarShown(binding.toolbar.visibility != View.VISIBLE)
+        }
+    }
+
+    private fun setToolbarShown(shown: Boolean) {
+        binding.toolbar.visibility = if (shown) View.VISIBLE else View.GONE
+        binding.toolbarHandle.setIconResource(
+            if (shown) R.drawable.ic_baseline_expand_less_24 else R.drawable.ic_baseline_expand_more_24)
+        binding.toolbarHandle.contentDescription = getString(if (shown) R.string.hide_toolbar else R.string.show_toolbar)
     }
 
     private fun restoreProxyViewHierarchy(rootWindow: AndroidXpraWindow) {

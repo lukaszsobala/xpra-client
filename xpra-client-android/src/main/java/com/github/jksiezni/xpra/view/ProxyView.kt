@@ -57,6 +57,84 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
         setOnTouchListener(TouchHandler())
     }
 
+    private val mouse = MouseHandler()
+
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean =
+        mouse.onGenericMotion(event) || super.onGenericMotionEvent(event)
+
+    override fun onHoverEvent(event: MotionEvent): Boolean =
+        mouse.onGenericMotion(event) || super.onHoverEvent(event)
+
+    /**
+     * Handles a real mouse (or a laptop's touchpad) connected to the device: moving it moves the
+     * pointer, even without a button down, and its buttons and wheel are sent as they are.
+     */
+    inner class MouseHandler {
+        /** the scrolling not sent yet, as the wheel only clicks in whole steps */
+        private var pendingScrollX = 0f
+        private var pendingScrollY = 0f
+
+        fun onGenericMotion(event: MotionEvent): Boolean {
+            if (!event.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) {
+                return false
+            }
+            event.offsetLocation(x, y)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_HOVER_MOVE, MotionEvent.ACTION_HOVER_ENTER -> window.movePointer(wx(event), wy(event))
+                MotionEvent.ACTION_SCROLL -> {
+                    window.movePointer(wx(event), wy(event))
+                    pendingScrollY += event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+                    pendingScrollX += event.getAxisValue(MotionEvent.AXIS_HSCROLL)
+                    while (pendingScrollY >= 1f) { click(4, event); pendingScrollY -= 1f }
+                    while (pendingScrollY <= -1f) { click(5, event); pendingScrollY += 1f }
+                    while (pendingScrollX >= 1f) { click(7, event); pendingScrollX -= 1f }
+                    while (pendingScrollX <= -1f) { click(6, event); pendingScrollX += 1f }
+                }
+                else -> return false
+            }
+            return true
+        }
+
+        /**
+         * @return true if the event came from a mouse, and was handled
+         */
+        fun onTouch(event: MotionEvent): Boolean {
+            if (!event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+                return false
+            }
+            when (event.actionMasked) {
+                MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.ACTION_BUTTON_RELEASE -> {
+                    val button = xButton(event.actionButton)
+                    if (button > 0) {
+                        window.movePointer(wx(event), wy(event))
+                        window.mouseAction(button, event.actionMasked == MotionEvent.ACTION_BUTTON_PRESS, wx(event), wy(event))
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> window.movePointer(wx(event), wy(event))
+                // the buttons are sent by ACTION_BUTTON_PRESS and ACTION_BUTTON_RELEASE
+            }
+            return true
+        }
+
+        private fun click(button: Int, event: MotionEvent) {
+            window.mouseAction(button, true, wx(event), wy(event))
+            window.mouseAction(button, false, wx(event), wy(event))
+        }
+
+        private fun xButton(androidButton: Int) = when (androidButton) {
+            MotionEvent.BUTTON_PRIMARY -> 1
+            MotionEvent.BUTTON_TERTIARY -> 2
+            MotionEvent.BUTTON_SECONDARY -> 3
+            MotionEvent.BUTTON_BACK -> 8
+            MotionEvent.BUTTON_FORWARD -> 9
+            else -> 0
+        }
+
+        private fun wx(event: MotionEvent) = (max(event.x, 0f) / window.scale).toInt()
+
+        private fun wy(event: MotionEvent) = (max(event.y, 0f) / window.scale).toInt()
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         if (window.hasParent()) {
             setMeasuredDimension((window.width*window.scale).toInt(), (window.height*window.scale).toInt())
@@ -112,6 +190,9 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
         @SuppressLint("ClickableViewAccessibility")
         override fun onTouch(v: View, event: MotionEvent): Boolean {
             event.offsetLocation(x, y)
+            if (mouse.onTouch(event)) {
+                return true
+            }
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = event.x

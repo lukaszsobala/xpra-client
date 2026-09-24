@@ -33,8 +33,11 @@ import kotlin.math.max
  * Draws the activity edge-to-edge (enforced from Android 15) and keeps its content
  * clear of the system bars: [appBar] is padded below the status bar, while [root]
  * is padded for the remaining bars, display cutouts and the soft keyboard.
+ * [onImeVisibilityChanged] is told whether the soft keyboard is shown.
  */
-fun setupEdgeToEdge(activity: ComponentActivity, root: View, appBar: View) {
+@JvmOverloads
+fun setupEdgeToEdge(activity: ComponentActivity, root: View, appBar: View,
+                    onImeVisibilityChanged: ((Boolean) -> Unit)? = null) {
     // dark system bar icons on the light theme, light ones on the dark theme
     val barStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
     activity.enableEdgeToEdge(barStyle, barStyle)
@@ -44,6 +47,7 @@ fun setupEdgeToEdge(activity: ComponentActivity, root: View, appBar: View) {
         val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
         appBar.updatePadding(top = bars.top)
         view.updatePadding(left = bars.left, right = bars.right, bottom = max(bars.bottom, ime.bottom))
+        onImeVisibilityChanged?.invoke(insets.isVisible(WindowInsetsCompat.Type.ime()))
         WindowInsetsCompat.CONSUMED
     }
 }

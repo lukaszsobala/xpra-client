@@ -145,8 +145,75 @@ public class KeyboardInput {
      */
     private final Map<String, Integer> keycodes = new HashMap<>();
 
+    /**
+     * The state of a sticky modifier key, ie: the Ctrl key of an on-screen key row.
+     */
+    public enum Sticky {
+        /** not held down */
+        OFF,
+        /** held down for the next key only */
+        LATCHED,
+        /** held down until turned off */
+        LOCKED
+    }
+
+    /**
+     * Notified when a sticky modifier is released after the key it applied to.
+     */
+    public interface StickyListener {
+        void onStickyChanged();
+    }
+
+    private final Map<String, Sticky> sticky = new LinkedHashMap<>();
+    private StickyListener stickyListener;
+
     public KeyboardInput(XpraWindow window) {
         this.window = window;
+    }
+
+    public void setStickyListener(StickyListener listener) {
+        this.stickyListener = listener;
+    }
+
+    public Sticky getSticky(String keysym) {
+        final Sticky state = sticky.get(keysym);
+        return state != null ? state : Sticky.OFF;
+    }
+
+    /**
+     * Holds a modifier key down, for the next key or until turned off, or releases it.
+     */
+    public void setSticky(String keysym, Sticky state) {
+        final Sticky previous = getSticky(keysym);
+        if (previous == state) {
+            return;
+        }
+        if (state == Sticky.OFF) {
+            sticky.remove(keysym);
+            key(keysym, false);
+        } else {
+            sticky.put(keysym, state);
+            if (previous == Sticky.OFF) {
+                key(keysym, true);
+            }
+        }
+    }
+
+    /**
+     * Releases the modifiers latched for the key just typed.
+     */
+    private void releaseLatched() {
+        boolean changed = false;
+        for (Map.Entry<String, Sticky> e : new ArrayList<>(sticky.entrySet())) {
+            if (e.getValue() == Sticky.LATCHED) {
+                sticky.remove(e.getKey());
+                key(e.getKey(), false);
+                changed = true;
+            }
+        }
+        if (changed && stickyListener != null) {
+            stickyListener.onStickyChanged();
+        }
     }
 
     /**
@@ -177,6 +244,7 @@ public class KeyboardInput {
         if (shift) {
             key(SHIFT, false);
         }
+        releaseLatched();
     }
 
     /**
@@ -191,6 +259,9 @@ public class KeyboardInput {
             }
         }
         window.keyboardAction(getKeycode(keysym), keysym, pressed, getModifiers(), null);
+        if (!pressed && !MODIFIERS.containsKey(keysym)) {
+            releaseLatched();
+        }
     }
 
     private void typeExtraCharacter(String keysym) {
@@ -209,6 +280,7 @@ public class KeyboardInput {
         }
         window.keyboardAction(keycode, keysym, true, getModifiers(), null);
         window.keyboardAction(keycode, keysym, false, getModifiers(), null);
+        releaseLatched();
     }
 
     /**
@@ -289,8 +361,12 @@ public class KeyboardInput {
      * Releases all the modifier keys still held down, ie: when the keyboard is hidden.
      */
     public void releaseModifiers() {
+        sticky.clear();
         for (String key : new ArrayList<>(pressedModifierKeys)) {
             key(key, false);
+        }
+        if (stickyListener != null) {
+            stickyListener.onStickyChanged();
         }
     }
 

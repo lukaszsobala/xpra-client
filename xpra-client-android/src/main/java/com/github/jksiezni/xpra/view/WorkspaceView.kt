@@ -26,6 +26,7 @@ import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.HapticFeedbackConstants
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -113,7 +114,9 @@ class WorkspaceView : FrameLayout {
 
     private val touchpad = Touchpad()
 
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean = touchpadMode
+    // a real mouse is not a touchpad: let the windows have its events
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean =
+        touchpadMode && !ev.isFromSource(InputDevice.SOURCE_MOUSE)
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {

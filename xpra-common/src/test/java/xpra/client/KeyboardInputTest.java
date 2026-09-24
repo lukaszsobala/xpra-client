@@ -110,9 +110,39 @@ public class KeyboardInputTest {
         }
     }
 
+    @Test
+    public void testLatchedModifier() {
+        final RecordingWindow window = new RecordingWindow();
+        final KeyboardInput input = new KeyboardInput(window);
+        final int[] changes = {0};
+        input.setStickyListener(() -> changes[0]++);
+        input.setSticky("Control_L", KeyboardInput.Sticky.LATCHED);
+        input.typeText("cd");
+        // held for the next key only:
+        assertEquals(Arrays.asList("+Control_L@37", "+c@54", "-c@54", "-Control_L@37", "+d@40", "-d@40"), window.keys);
+        assertEquals(Arrays.asList("control"), window.modifiers.get(1));
+        assertEquals(KeyboardInput.Sticky.OFF, input.getSticky("Control_L"));
+        assertEquals(1, changes[0]);
+    }
+
+    @Test
+    public void testLockedModifier() {
+        final RecordingWindow window = new RecordingWindow();
+        final KeyboardInput input = new KeyboardInput(window);
+        input.setSticky("Alt_L", KeyboardInput.Sticky.LOCKED);
+        input.key("Tab", true);
+        input.key("Tab", false);
+        input.key("Tab", true);
+        input.key("Tab", false);
+        assertEquals(KeyboardInput.Sticky.LOCKED, input.getSticky("Alt_L"));
+        input.setSticky("Alt_L", KeyboardInput.Sticky.OFF);
+        assertEquals(Arrays.asList("+Alt_L@64", "+Tab@23", "-Tab@23", "+Tab@23", "-Tab@23", "-Alt_L@64"), window.keys);
+    }
+
     private static class RecordingWindow extends XpraWindow {
 
         final List<String> keys = new ArrayList<>();
+        final List<List<String>> modifiers = new ArrayList<>();
         final List<Map<String, Object>> keymaps = new ArrayList<>();
 
         RecordingWindow() {
@@ -131,6 +161,7 @@ public class KeyboardInputTest {
         @Override
         public void keyboardAction(int keycode, String keyname, boolean pressed, List<String> modifiers, String string) {
             keys.add((pressed ? "+" : "-") + keyname + "@" + keycode);
+            this.modifiers.add(new ArrayList<>(modifiers));
         }
 
         @Override

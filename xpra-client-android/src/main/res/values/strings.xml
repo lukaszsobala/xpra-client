@@ -58,4 +58,8 @@
     <string name="direct_touch_mode_on">Direct touch: tap where you want to click</string>
     <string name="clipboard_sharing">Share the clipboard</string>
     <string name="clipboard_sharing_summary">Text copied on this device can be pasted on the server, and the other way round</string>
+    <!-- a modifier key held down until tapped again, ie: "Ctrl 🔒" -->
+    <string name="locked_key">%1$s 🔒</string>
+    <string name="show_toolbar">Show the toolbar</string>
+    <string name="hide_toolbar">Hide the toolbar</string>
 </resources>

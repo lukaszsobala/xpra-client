@@ -33,9 +33,49 @@
         android:theme="@style/ThemeOverlay.Xpra.CompactToolbar"
         app:titleTextAppearance="@style/TextAppearance.Xpra.CompactToolbarTitle" />
 
-    <com.github.jksiezni.xpra.view.WorkspaceView
-        android:id="@+id/workspaceView"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- pinch to zoom into the windows -->
+        <com.github.jksiezni.xpra.view.ZoomLayout
+            android:id="@+id/zoomLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <com.github.jksiezni.xpra.view.WorkspaceView
+                android:id="@+id/workspaceView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+        </com.github.jksiezni.xpra.view.ZoomLayout>
+
+        <!-- in landscape, where the toolbar is hidden: shows and hides it -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/toolbarHandle"
+            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+            android:layout_width="48dp"
+            android:layout_height="24dp"
+            android:layout_gravity="top|center_horizontal"
+            android:alpha="0.75"
+            android:contentDescription="@string/show_toolbar"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:visibility="gone"
+            app:icon="@drawable/ic_baseline_expand_more_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp" />
+
+    </FrameLayout>
+
+    <!-- shown above the on-screen keyboard -->
+    <com.github.jksiezni.xpra.view.ExtraKeysView
+        android:id="@+id/extraKeys"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceContainer"
+        android:visibility="gone"/>
 
 </LinearLayout>
