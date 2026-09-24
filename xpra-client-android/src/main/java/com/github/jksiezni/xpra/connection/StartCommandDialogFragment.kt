@@ -54,7 +54,7 @@ class StartCommandDialogFragment : DialogFragment(), DialogInterface.OnClickList
         const val TAG = "StartCommandDialogFragment"
     }
 
-    override fun onClick(dialog: DialogInterface?, which: Int) {
+    override fun onClick(dialog: DialogInterface, which: Int) {
         when (which) {
             DialogInterface.BUTTON_POSITIVE -> {
                 val cmd = editText?.text?.trim().toString()

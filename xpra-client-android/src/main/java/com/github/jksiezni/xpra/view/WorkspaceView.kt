@@ -28,7 +28,6 @@ import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import android.widget.Scroller
 import androidx.core.math.MathUtils
-import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.children
 
 /**
@@ -51,7 +50,7 @@ class WorkspaceView : FrameLayout {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
     }
 
@@ -96,7 +95,7 @@ class WorkspaceView : FrameLayout {
         awakenScrollBars()
     }
 
-    override fun onViewRemoved(child: View?) {
+    override fun onViewRemoved(child: View) {
         super.onViewRemoved(child)
         val range = getScrollRange()
         val viewport = Rect().apply { getDrawingRect(this) }
@@ -119,19 +118,19 @@ class WorkspaceView : FrameLayout {
 
     private val scroller = Scroller(context)
 
-    private val gestureDetector: GestureDetectorCompat = GestureDetectorCompat(context, object : GestureDetector.SimpleOnGestureListener() {
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
 
         override fun onDown(e: MotionEvent): Boolean {
             return true
         }
 
-        override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, distanceX: Float, distanceY: Float): Boolean {
+        override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
             scroller.forceFinished(true)
             scrollBy(distanceX.toInt(), distanceY.toInt())
             return true
         }
 
-        override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
+        override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
             val bounds = getScrollRange()
             scroller.forceFinished(true)
             scroller.fling(scrollX, scrollY, -velocityX.toInt(), -velocityY.toInt(),

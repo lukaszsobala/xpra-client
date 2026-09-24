@@ -48,7 +48,7 @@ class ServerDetails : Serializable {
 
     val url: String
         get() {
-            val builder = StringBuilder(type.toString().toLowerCase(Locale.getDefault()))
+            val builder = StringBuilder(type.toString().lowercase(Locale.getDefault()))
             builder.append("://")
             if (type == ConnectionType.SSH) {
                 builder.append(username)

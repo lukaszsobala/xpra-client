@@ -40,7 +40,7 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
                 window.show(surface, width, height)
             }
 
-            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture?, width: Int, height: Int) {
+            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
                 Timber.v("onSurfaceTextureSizeChanged(): windowId=${window.id}, ${width}x${height}")
             }
 
@@ -49,7 +49,7 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
                 return false
             }
 
-            override fun onSurfaceTextureUpdated(surface: SurfaceTexture?) {
+            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
                 // do nothing
             }
         }
@@ -84,7 +84,7 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
 
     inner class TouchHandler : OnTouchListener {
         @SuppressLint("ClickableViewAccessibility")
-        override fun onTouch(v: View?, event: MotionEvent): Boolean {
+        override fun onTouch(v: View, event: MotionEvent): Boolean {
             event.offsetLocation(x, y)
             val scale = window.scale
             val x = (max(event.x, 0f) / scale).toInt()
@@ -100,7 +100,7 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
     }
 
     inner class KeyHandler : OnKeyListener {
-        override fun onKey(v: View?, keyCode: Int, event: KeyEvent): Boolean {
+        override fun onKey(v: View, keyCode: Int, event: KeyEvent): Boolean {
             Timber.v("onKey(%d, %s)", keyCode, event)
             if (event.isSystem) {
                 Timber.v("isSystem event")
