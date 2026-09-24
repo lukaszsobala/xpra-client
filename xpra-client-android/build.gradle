@@ -23,11 +23,14 @@ apply plugin: 'kotlin-kapt'
 ext {
     versionMajor = 1
     versionMinor = 0
+    // CI builds are numbered, so that each APK can be installed over the previous one
+    buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "0").toInteger()
 }
-// assert versionMinor to not exceed 100, as it is used to evaluate versionCode
+// assert versionMinor and buildNumber fit in their digits of versionCode
 assert ext.versionMinor < 100
+assert ext.buildNumber < 10000
 
-version = "${ext.versionMajor}.${ext.versionMinor}"
+version = "${ext.versionMajor}.${ext.versionMinor}.${ext.buildNumber}"
 base.archivesName = "${project.name}-$version"
 
 android {
@@ -38,10 +41,27 @@ android {
         applicationId "io.github.xpra.client"
         minSdk 23
         targetSdk 36
-        versionCode = versionMajor*100 + versionMinor
+        versionCode = versionMajor * 1000000 + versionMinor * 10000 + buildNumber
         versionName version
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        // A fixed debug key, shared by all builds, so that updates can be installed over each other.
+        // Without it, every CI runner signs with its own randomly generated debug key.
+        debug {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
     }
 
     compileOptions {

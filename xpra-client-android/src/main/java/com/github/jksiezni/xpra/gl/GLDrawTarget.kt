@@ -44,8 +44,9 @@ internal class GLDrawTarget(
      * @param windowSize the window size sent with the update, if known
      * @param right the right edge of the update
      * @param bottom the bottom edge of the update
+     * @return true if the texture was (re)created, so its previous contents are lost
      */
-    fun validateTextureSize(windowSize: IntArray?, right: Int, bottom: Int) {
+    fun validateTextureSize(windowSize: IntArray?, right: Int, bottom: Int): Boolean {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
         var width = maxOf(textureWidth, right)
         var height = maxOf(textureHeight, bottom)
@@ -59,8 +60,13 @@ internal class GLDrawTarget(
             GlUtil.checkGlError("glTexImage2D")
             textureWidth = width
             textureHeight = height
+            return true
         }
+        return false
     }
+
+    fun coversTexture(x: Int, y: Int, width: Int, height: Int): Boolean =
+        x <= 0 && y <= 0 && x + width >= textureWidth && y + height >= textureHeight
 
     fun makeCurrent() {
         eglSurface.makeCurrent()

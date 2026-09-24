@@ -34,7 +34,7 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
     private val windowsLiveData = MutableLiveData<Collection<XpraWindow>>()
     private val listeners: MutableList<XpraEventListener> = mutableListOf()
 
-    private val composer = GLComposer(this::onDrawFinished)
+    private val composer = GLComposer(this::onDrawFinished) { windowId -> getWindow(windowId)?.requestRefresh() }
 
     /**
      * How many screen pixels are used for one pixel of the remote windows.

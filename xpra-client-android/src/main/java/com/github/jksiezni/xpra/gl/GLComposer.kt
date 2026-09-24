@@ -35,7 +35,13 @@ import java.nio.ByteBuffer
 /**
  *
  */
-class GLComposer(private val callback: ComposeCallback) : GLThread() {
+/**
+ * @param onContentLost called when the contents of a window were lost and must be sent again
+ */
+class GLComposer(
+    private val callback: ComposeCallback,
+    private val onContentLost: (windowId: Int) -> Unit
+) : GLThread() {
 
     private val drawTargets: MutableMap<Int, GLDrawTarget> = mutableMapOf()
 
@@ -130,7 +136,12 @@ class GLComposer(private val callback: ComposeCallback) : GLThread() {
             // process packet
             val startTime = SystemClock.uptimeMillis()
             glWindow.makeCurrent()
-            glWindow.validateTextureSize(packet.windowSize, packet.x + packet.w, packet.y + packet.h)
+            if (glWindow.validateTextureSize(packet.windowSize, packet.x + packet.w, packet.y + packet.h)
+                && !glWindow.coversTexture(packet.x, packet.y, packet.w, packet.h)) {
+                // this update only redraws a part of the new texture, ask for the rest of the window
+                Timber.d("Requesting a refresh of window %d", packet.windowId)
+                onContentLost(packet.windowId)
+            }
             try {
                 composeImage(glWindow.texture, packet)
             } catch (e: Exception) {

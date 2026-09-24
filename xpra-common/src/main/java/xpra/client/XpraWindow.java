@@ -25,6 +25,7 @@ import xpra.protocol.packets.ConfigureWindow;
 import xpra.protocol.packets.DamageSequence;
 import xpra.protocol.packets.DrawPacket;
 import xpra.protocol.packets.FocusRequest;
+import xpra.protocol.packets.BufferRefresh;
 import xpra.protocol.packets.KeyAction;
 import xpra.protocol.packets.MapWindow;
 import xpra.protocol.packets.MouseButtonAction;
@@ -186,6 +187,15 @@ public abstract class XpraWindow {
 
     public boolean isShown() {
         return mapped;
+    }
+
+    /**
+     * Asks the server to send the whole window again, ie: after its contents were lost.
+     */
+    public void requestRefresh() {
+        if (sender != null) {
+            sender.send(new BufferRefresh(id));
+        }
     }
 
     protected void closeWindow() {
