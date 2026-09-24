@@ -20,7 +20,6 @@ package com.github.jksiezni.xpra.config
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.TextUtils
 import android.util.Patterns
 import android.view.Menu
 import android.view.MenuInflater
@@ -161,10 +160,11 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
 
 class EditTextSummaryProvider(private val emptySummary: String) : SummaryProvider<EditTextPreference> {
     override fun provideSummary(preference: EditTextPreference): CharSequence {
-        return if (TextUtils.isEmpty(preference.text)) {
+        val text = preference.text
+        return if (text.isNullOrEmpty()) {
             emptySummary
         } else {
-            preference.text
+            text
         }
     }
 }
@@ -172,7 +172,7 @@ class EditTextSummaryProvider(private val emptySummary: String) : SummaryProvide
 class DisplayIdSummaryProvider(private val emptySummary: String) : SummaryProvider<EditTextPreference> {
     override fun provideSummary(preference: EditTextPreference): CharSequence {
         val text = preference.text
-        return if (TextUtils.isEmpty(text) || "-1" == text) {
+        return if (text.isNullOrEmpty() || "-1" == text) {
             emptySummary
         } else {
             text
