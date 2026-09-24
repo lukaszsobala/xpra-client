@@ -47,4 +47,9 @@
     <string name="cancel">Cancel</string>
     <string name="hint_start_cmd">ex. xterm</string>
 
+    <string name="remember_password">Remember password</string>
+    <string name="forget_passwords">Forget saved passwords</string>
+    <string name="forget_passwords_summary">Saved passwords are encrypted with a key that never leaves this device</string>
+    <string name="no_saved_passwords">No saved passwords</string>
+    <string name="passwords_forgotten">Saved passwords forgotten</string>
 </resources>

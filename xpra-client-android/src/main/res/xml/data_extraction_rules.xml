@@ -17,7 +17,12 @@
   ~     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
   -->
 
-<full-backup-content>
-    <!-- saved passwords: useless elsewhere, as their key stays in this device's keystore -->
-    <exclude domain="sharedpref" path="saved_passwords.xml" />
-</full-backup-content>
+<!-- Android 12+: saved passwords are never backed up or transferred, as their key stays in this device's keystore -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="saved_passwords.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="saved_passwords.xml" />
+    </device-transfer>
+</data-extraction-rules>

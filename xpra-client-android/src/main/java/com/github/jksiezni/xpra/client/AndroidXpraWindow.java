@@ -162,6 +162,10 @@ public class AndroidXpraWindow extends XpraWindow {
             int x = hasParent() ? getX() : 0;
             int y = hasParent() ? getY() : 0;
             mapWindow(x, y, w, h);
+            // v6.5 servers still consider a window focused after it was unmapped (ie: when the
+            // device rotates), and ignore the focus request, which leaves the keyboard without
+            // a window: clear the focus first.
+            setFocused(false);
             setFocused(true);
         }
     }

@@ -45,6 +45,8 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
 
     private lateinit var binding: ActivityConnectBinding
 
+    private var userInfoHandler: SshUserInfoHandler? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Timber.d("onCreate()")
@@ -66,7 +68,9 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
                     .subscribe(
                             { connection: ServerDetails ->
                                 title = connection.name
-                                api.connect(connection, SshUserInfoHandler(this))
+                                val userInfo = SshUserInfoHandler(this, connection)
+                                userInfoHandler = userInfo
+                                api.connect(connection, userInfo)
                             },
                             { throwable: Throwable? ->
                                 Timber.e(throwable)
@@ -85,6 +89,7 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
     }
 
     override fun onConnected(serverDetails: ServerDetails) {
+        userInfoHandler?.onConnected()
         setResult(RESULT_OK)
         finish()
     }
