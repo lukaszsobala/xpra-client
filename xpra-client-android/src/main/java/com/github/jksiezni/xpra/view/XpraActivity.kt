@@ -70,6 +70,8 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             api.registerConnectionListener(this)
             api.xpraClient.addEventListener(this)
             rootWindow.addWindowListener(this)
+            // the activity is created again when the device rotates:
+            api.xpraClient.updateDesktopSize(resources.displayMetrics)
             restoreProxyViewHierarchy(rootWindow)
             binding.workspaceView.keyboardInput = KeyboardInput(rootWindow)
             binding.workspaceView.requestFocus()

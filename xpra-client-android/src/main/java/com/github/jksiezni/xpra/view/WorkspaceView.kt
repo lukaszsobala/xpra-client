@@ -89,10 +89,6 @@ class WorkspaceView : FrameLayout {
         return true
     }
 
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        return ev.pointerCount >= 2
-    }
-
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)

@@ -32,7 +32,7 @@ import xpra.protocol.XpraReceiver;
 import xpra.protocol.XpraSender;
 import xpra.protocol.packets.ConfigureWindowOverrideRedirect;
 import xpra.protocol.packets.CursorPacket;
-import xpra.protocol.packets.DesktopSize;
+import xpra.protocol.packets.ConfigureDisplay;
 import xpra.protocol.packets.Disconnect;
 import xpra.protocol.packets.DrawPacket;
 import xpra.protocol.packets.HelloRequest;
@@ -278,11 +278,17 @@ public abstract class XpraClient {
         return windows.values();
     }
 
+    /**
+     * Sets the size of the server's virtual screen, and resizes it if connected already.
+     */
     public void setDesktopSize(int width, int height) {
+        if (width == desktopWidth && height == desktopHeight) {
+            return;
+        }
         this.desktopWidth = width;
         this.desktopHeight = height;
-        if (sender != null) {
-            sender.send(new DesktopSize(width, height));
+        if (sender != null && handshakeComplete) {
+            sender.send(new ConfigureDisplay(width, height));
         }
     }
 

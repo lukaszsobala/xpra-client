@@ -18,6 +18,7 @@
 package com.github.jksiezni.xpra.client
 
 import android.content.Context
+import android.util.DisplayMetrics
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.github.jksiezni.xpra.config.ServerDetails
@@ -52,9 +53,16 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
     fun applySettings(serverDetails: ServerDetails) {
         val dm = context.resources.displayMetrics
         scale = if (serverDetails.scalePercent > 0) serverDetails.scalePercent / 100f else dm.density
-        // the server's virtual screen matches the area our windows can use:
-        setDesktopSize((dm.widthPixels / scale).toInt(), (dm.heightPixels / scale).toInt())
+        updateDesktopSize(dm)
         setPictureEncoding(serverDetails.pictureEncoding)
+    }
+
+    /**
+     * Makes the server's virtual screen match the area our windows can use, ie: after the
+     * device was rotated. Servers clamp windows to their screen size.
+     */
+    fun updateDesktopSize(dm: DisplayMetrics) {
+        setDesktopSize((dm.widthPixels / scale).toInt(), (dm.heightPixels / scale).toInt())
     }
 
     override fun onCreateWindow(wnd: NewWindow, parentWindow: XpraWindow?): XpraWindow {
