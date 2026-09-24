@@ -17,6 +17,7 @@
  */
 package com.github.jksiezni.xpra.view
 
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -103,6 +104,32 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             window?.removeWindowListener(this)
             api.xpraClient.removeEventListener(this)
             api.unregisterConnectionListener(this)
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            // ie: back from the app where some text was copied
+            sendClipboard()
+        }
+    }
+
+    private val clipChangedListener = ClipboardManager.OnPrimaryClipChangedListener { sendClipboard() }
+
+    override fun onResume() {
+        super.onResume()
+        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).addPrimaryClipChangedListener(clipChangedListener)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).removePrimaryClipChangedListener(clipChangedListener)
+    }
+
+    private fun sendClipboard() {
+        serviceBinderFragment.whenXpraAvailable { api ->
+            AndroidClipboard.sendToServer(this, api.xpraClient.clipboard)
         }
     }
 

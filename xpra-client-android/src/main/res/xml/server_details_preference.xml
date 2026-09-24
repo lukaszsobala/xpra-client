@@ -79,6 +79,12 @@
             android:entries="@array/picture_encoding_names"
             android:entryValues="@array/picture_encoding_values"/>
 
+        <SwitchPreferenceCompat
+            android:key="clipboard_sharing"
+            android:defaultValue="true"
+            android:title="@string/clipboard_sharing"
+            android:summary="@string/clipboard_sharing_summary" />
+
         <ListPreference
             android:key="resolution"
             app:useSimpleSummaryProvider="true"

@@ -32,6 +32,7 @@ import xpra.protocol.XpraReceiver;
 import xpra.protocol.XpraSender;
 import xpra.protocol.packets.ConfigureWindowOverrideRedirect;
 import xpra.protocol.packets.CursorPacket;
+import xpra.protocol.packets.ClipboardPacket;
 import xpra.protocol.packets.ConfigureDisplay;
 import xpra.protocol.packets.Disconnect;
 import xpra.protocol.packets.DrawPacket;
@@ -81,6 +82,7 @@ public abstract class XpraClient {
      * It is set to true, when the hello packet is received from a Server.
      */
     private volatile boolean handshakeComplete;
+    private ClipboardSync clipboard;
 
 
     public XpraClient(int desktopWidth, int desktopHeight, PictureEncoding[] supportedPictureEncodings) {
@@ -98,6 +100,14 @@ public abstract class XpraClient {
         //  setup packet handlers
         receiver.registerHandler(HelloResponse.class, new HelloHandler());
         receiver.registerHandler(Ping.class, new PingHandler());
+        receiver.registerHandler(ClipboardPacket.class, new XpraReceiver.PacketHandler<ClipboardPacket>() {
+            @Override
+            public void process(ClipboardPacket packet) {
+                if (clipboard != null) {
+                    clipboard.process(packet);
+                }
+            }
+        });
         receiver.registerHandler(Disconnect.class, new XpraReceiver.PacketHandler<Disconnect>() {
             @Override
             public void process(Disconnect response) throws IOException {
@@ -248,6 +258,10 @@ public abstract class XpraClient {
         if (username != null && !username.isEmpty()) {
             hello.setUsername(username);
         }
+        if (clipboard != null) {
+            clipboard.setSender(sender);
+            hello.setClipboard(ClipboardSync.getCaps());
+        }
         sender.send(hello);
     }
 
@@ -260,10 +274,34 @@ public abstract class XpraClient {
         disconnectReason = null;
         handshakeComplete = false;
         sender = null;
+        if (clipboard != null) {
+            clipboard.setSender(null);
+        }
     }
 
     public void onConnectionError(IOException e) {
         LOGGER.error("connection error", e);
+    }
+
+    /**
+     * Shares the clipboard with the server, from the next connection.
+     *
+     * @return where to report the changes of the local clipboard
+     */
+    public ClipboardSync enableClipboard(ClipboardSync.LocalClipboard local) {
+        clipboard = new ClipboardSync(local);
+        return clipboard;
+    }
+
+    /**
+     * Stops sharing the clipboard, from the next connection.
+     */
+    public void disableClipboard() {
+        clipboard = null;
+    }
+
+    public ClipboardSync getClipboard() {
+        return clipboard;
     }
 
     public XpraSender getSender() {

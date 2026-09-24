@@ -31,7 +31,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 /**
  *
  */
-@Database(entities = {ServerDetails.class}, version = 3, exportSchema = false)
+@Database(entities = {ServerDetails.class}, version = 4, exportSchema = false)
 @TypeConverters(ConvertersKt.class)
 public abstract class ConfigDatabase extends RoomDatabase {
 
@@ -49,10 +49,20 @@ public abstract class ConfigDatabase extends RoomDatabase {
         }
     };
 
+    /**
+     * Adds the clipboard sharing setting, on by default.
+     */
+    static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE ServerDetails ADD COLUMN clipboardSharing INTEGER NOT NULL DEFAULT 1");
+        }
+    };
+
     public static void setup(Application app) {
         if (instance == null) {
             instance = Room.databaseBuilder(app, ConfigDatabase.class, "config.db")
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration()
                 .build();
         }

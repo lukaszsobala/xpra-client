@@ -54,6 +54,12 @@ class ServerDetails : Serializable {
     @ColumnInfo(defaultValue = "0")
     var scalePercent: Int = SCALE_AUTOMATIC
 
+    /**
+     * Whether text copied on the device can be pasted on the server, and the other way round.
+     */
+    @ColumnInfo(defaultValue = "1")
+    var clipboardSharing: Boolean = true
+
     val url: String
         get() {
             val builder = StringBuilder(type.toString().lowercase(Locale.getDefault()))
@@ -81,11 +87,11 @@ class ServerDetails : Serializable {
                 host == that.host &&
                 username == that.username &&
                 sshPrivateKeyFile == that.sshPrivateKeyFile && pictureEncoding == that.pictureEncoding &&
-                scalePercent == that.scalePercent
+                scalePercent == that.scalePercent && clipboardSharing == that.clipboardSharing
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(id, name, type, host, port, displayId, username, sshPrivateKeyFile, pictureEncoding, scalePercent)
+        return Objects.hash(id, name, type, host, port, displayId, username, sshPrivateKeyFile, pictureEncoding, scalePercent, clipboardSharing)
     }
 
     companion object {

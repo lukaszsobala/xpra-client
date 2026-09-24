@@ -41,6 +41,7 @@ class ServerDetailsDataStore(
         const val PREF_DISPLAY_ID = "display_id"
         const val PREF_PICTURE_ENC = "picture_encoding"
         const val PREF_RESOLUTION = "resolution"
+        const val PREF_CLIPBOARD = "clipboard_sharing"
     }
 
     override fun getString(key: String, defValue: String?): String? {
@@ -67,6 +68,19 @@ class ServerDetailsDataStore(
             PREF_DISPLAY_ID -> serverDetails.displayId = value?.toInt() ?: -1
             PREF_PICTURE_ENC -> serverDetails.pictureEncoding = enumValueOf(value ?: PictureEncoding.jpeg.name)
             PREF_RESOLUTION -> serverDetails.scalePercent = value?.toIntOrNull() ?: ServerDetails.SCALE_AUTOMATIC
+        }
+    }
+
+    override fun getBoolean(key: String, defValue: Boolean): Boolean {
+        return when (key) {
+            PREF_CLIPBOARD -> serverDetails.clipboardSharing
+            else -> throw UnsupportedOperationException("$key is not supported")
+        }
+    }
+
+    override fun putBoolean(key: String, value: Boolean) {
+        when (key) {
+            PREF_CLIPBOARD -> serverDetails.clipboardSharing = value
         }
     }
 

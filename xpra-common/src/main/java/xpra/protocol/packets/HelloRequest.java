@@ -122,6 +122,13 @@ public class HelloRequest extends xpra.protocol.IOPacket {
     }
 
     /**
+     * Enables sharing the clipboard, see {@link xpra.client.ClipboardSync}.
+     */
+    public void setClipboard(Map<String, Object> clipboardCaps) {
+        caps.put("clipboard", clipboardCaps);
+    }
+
+    /**
      * The name of the user on the client side, which servers require even without authentication.
      */
     public void setUsername(String username) {

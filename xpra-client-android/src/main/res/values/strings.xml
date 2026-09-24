@@ -56,4 +56,6 @@
     <string name="direct_touch_mode">Direct touch mode</string>
     <string name="touchpad_mode_on">Touchpad: move the pointer with a finger, tap to click</string>
     <string name="direct_touch_mode_on">Direct touch: tap where you want to click</string>
+    <string name="clipboard_sharing">Share the clipboard</string>
+    <string name="clipboard_sharing_summary">Text copied on this device can be pasted on the server, and the other way round</string>
 </resources>

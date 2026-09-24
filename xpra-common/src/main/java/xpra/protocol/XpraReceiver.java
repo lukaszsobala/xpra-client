@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import xpra.protocol.packets.ConfigureWindowOverrideRedirect;
+import xpra.protocol.packets.ClipboardPacket;
 import xpra.protocol.packets.CursorPacket;
 import xpra.protocol.packets.Disconnect;
 import xpra.protocol.packets.DrawPacket;
@@ -68,6 +69,11 @@ public class XpraReceiver {
         PACKETS_MAP.put("configure-override-redirect", ConfigureWindowOverrideRedirect::new);
         PACKETS_MAP.put("raise-window", RaiseWindow::new);
         //PACKETS_MAP.put("notify_show", NotifyShow::new);
+        for (String type : new String[]{"clipboard-token", "clipboard-request", "clipboard-contents",
+            "clipboard-contents-none", "clipboard-pending-requests", "clipboard-enable-selections",
+            "set-clipboard-enabled"}) {
+            PACKETS_MAP.put(type, () -> new ClipboardPacket(type));
+        }
     }
 
     /**
@@ -77,7 +83,7 @@ public class XpraReceiver {
         "encodings", "server-event", "setting-change", "ping_echo", "info-response",
         "set-cursors", "bell", "eos", "window-move-resize", "window-resized",
         "restack-window", "initiate-moveresize", "pointer-grab", "pointer-ungrab",
-        "notify_show", "notify_close", "desktop_size", "clipboard-token", "control"
+        "notify_show", "notify_close", "desktop_size", "control"
     ));
 
     public <T extends Packet> void registerHandler(Class<T> packetClass, PacketHandler<T> handler) {

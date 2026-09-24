@@ -55,6 +55,11 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
         scale = if (serverDetails.scalePercent > 0) serverDetails.scalePercent / 100f else dm.density
         updateDesktopSize(dm)
         setPictureEncoding(serverDetails.pictureEncoding)
+        if (serverDetails.clipboardSharing) {
+            enableClipboard(AndroidClipboard(context))
+        } else {
+            disableClipboard()
+        }
     }
 
     /**
