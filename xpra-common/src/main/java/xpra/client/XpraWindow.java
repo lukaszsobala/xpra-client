@@ -168,14 +168,28 @@ public abstract class XpraWindow {
 	}
 
 	protected void mapWindow(int x, int y, int width, int height) {
+		mapWindow(x, y, width, height, false);
+	}
+
+	/**
+	 * @param maximized true if the window fills the screen
+	 */
+	protected void mapWindow(int x, int y, int width, int height, boolean maximized) {
 	    if (!mapped) {
-            sender.send(new MapWindow(id, x, y, width, height));
+            sender.send(new MapWindow(id, x, y, width, height).setMaximized(maximized));
             mapped = true;
         }
 	}
 	
 	protected void configureWindow(int x, int y, int width, int height) {
-		sender.send(new ConfigureWindow(id, x, y, width, height));
+		configureWindow(x, y, width, height, false);
+	}
+
+	/**
+	 * @param maximized true if the window fills the screen
+	 */
+	protected void configureWindow(int x, int y, int width, int height, boolean maximized) {
+		sender.send(new ConfigureWindow(id, x, y, width, height).setMaximized(maximized));
 	}
 	
 	protected void unmapWindow() {

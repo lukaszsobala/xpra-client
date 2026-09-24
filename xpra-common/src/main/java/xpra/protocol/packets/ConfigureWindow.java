@@ -47,7 +47,23 @@ public class ConfigureWindow extends WindowPacket {
 		elems.add(y);
 		elems.add(width);
 		elems.add(height);
+		if (maximized) {
+			// the client properties, the resize counter, then the window state:
+			elems.add(java.util.Collections.emptyMap());
+			elems.add(0);
+			elems.add(java.util.Collections.singletonMap("maximized", true));
+		}
 	}
+
+	/**
+	 * @see MapWindow#setMaximized(boolean)
+	 */
+	public ConfigureWindow setMaximized(boolean maximized) {
+		this.maximized = maximized;
+		return this;
+	}
+
+	private boolean maximized;
 	
 	@Override
 	public void deserialize(Iterator<Object> iter) {

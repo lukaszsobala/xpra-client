@@ -161,7 +161,8 @@ public class AndroidXpraWindow extends XpraWindow {
             int h = (int) (height / scale);
             int x = hasParent() ? getX() : 0;
             int y = hasParent() ? getY() : 0;
-            mapWindow(x, y, w, h);
+            // a window without a parent fills the screen:
+            mapWindow(x, y, w, h, !hasParent());
             // v6.5 servers still consider a window focused after it was unmapped (ie: when the
             // device rotates), and ignore the focus request, which leaves the keyboard without
             // a window: clear the focus first.
@@ -177,7 +178,7 @@ public class AndroidXpraWindow extends XpraWindow {
      */
     public void resize(int width, int height) {
         if (!isOverrideRedirect() && !hasParent() && isShown()) {
-            configureWindow(0, 0, (int) (width / scale), (int) (height / scale));
+            configureWindow(0, 0, (int) (width / scale), (int) (height / scale), true);
         }
     }
 
