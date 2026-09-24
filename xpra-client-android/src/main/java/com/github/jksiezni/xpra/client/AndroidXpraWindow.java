@@ -254,6 +254,16 @@ public class AndroidXpraWindow extends XpraWindow {
         return parent;
     }
 
+    /**
+     * Whether the window is drawn over another one, at its own position and size. It is also the
+     * case of the tooltips and menus which the server sends without a parent, and which are
+     * shown over the window on the screen.
+     */
+    @Override
+    public boolean hasParent() {
+        return parent != null || super.hasParent();
+    }
+
     public boolean hasParent(int windowId) {
         AndroidXpraWindow current = parent;
         while (current != null) {
