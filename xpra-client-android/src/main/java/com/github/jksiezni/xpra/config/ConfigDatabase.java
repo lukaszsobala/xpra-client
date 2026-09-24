@@ -20,15 +20,18 @@ package com.github.jksiezni.xpra.config;
 
 import android.app.Application;
 
+import androidx.annotation.NonNull;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 /**
  *
  */
-@Database(entities = {ServerDetails.class}, version = 2, exportSchema = false)
+@Database(entities = {ServerDetails.class}, version = 3, exportSchema = false)
 @TypeConverters(ConvertersKt.class)
 public abstract class ConfigDatabase extends RoomDatabase {
 
@@ -36,9 +39,20 @@ public abstract class ConfigDatabase extends RoomDatabase {
 
     private static ConfigDatabase instance;
 
+    /**
+     * Adds the resolution setting, keeping the saved connections.
+     */
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE ServerDetails ADD COLUMN scalePercent INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     public static void setup(Application app) {
         if (instance == null) {
             instance = Room.databaseBuilder(app, ConfigDatabase.class, "config.db")
+                .addMigrations(MIGRATION_2_3)
                 .fallbackToDestructiveMigration()
                 .build();
         }

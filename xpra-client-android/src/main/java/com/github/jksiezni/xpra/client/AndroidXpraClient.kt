@@ -20,6 +20,7 @@ package com.github.jksiezni.xpra.client
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.gl.GLComposer
 import timber.log.Timber
 import xpra.client.XpraClient
@@ -35,17 +36,33 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
 
     private val composer = GLComposer(this::onDrawFinished)
 
+    /**
+     * How many screen pixels are used for one pixel of the remote windows.
+     */
+    var scale: Float = context.resources.displayMetrics.density
+        private set
+
     init {
+        applySettings(ServerDetails())
+    }
+
+    /**
+     * Applies the per-connection settings, before connecting.
+     */
+    fun applySettings(serverDetails: ServerDetails) {
         val dm = context.resources.displayMetrics
-        setDesktopSize(dm.widthPixels, dm.heightPixels)
+        scale = if (serverDetails.scalePercent > 0) serverDetails.scalePercent / 100f else dm.density
+        // the server's virtual screen matches the area our windows can use:
+        setDesktopSize((dm.widthPixels / scale).toInt(), (dm.heightPixels / scale).toInt())
+        setPictureEncoding(serverDetails.pictureEncoding)
     }
 
     override fun onCreateWindow(wnd: NewWindow, parentWindow: XpraWindow?): XpraWindow {
         return if (parentWindow != null) {
             val parent = getWindow(parentWindow.id)
-            AndroidXpraWindow(wnd, context, composer, parent)
+            AndroidXpraWindow(wnd, context, composer, scale, parent)
         } else {
-            AndroidXpraWindow(wnd, context, composer)
+            AndroidXpraWindow(wnd, context, composer, scale, null)
         }
     }
 

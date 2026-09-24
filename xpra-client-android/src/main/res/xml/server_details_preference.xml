@@ -75,6 +75,13 @@
             android:entries="@array/picture_encoding_names"
             android:entryValues="@array/picture_encoding_values"/>
 
+        <ListPreference
+            android:key="resolution"
+            app:useSimpleSummaryProvider="true"
+            android:title="@string/resolution"
+            android:entries="@array/resolution_names"
+            android:entryValues="@array/resolution_values"/>
+
     </PreferenceCategory>
 
 </PreferenceScreen>

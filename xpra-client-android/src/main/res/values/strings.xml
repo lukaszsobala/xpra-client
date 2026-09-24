@@ -33,6 +33,7 @@
     <string name="connecting">Connecting…</string>
     <string name="picture_encoding">Picture Encoding</string>
     <string name="advanced">Advanced</string>
+    <string name="resolution">Resolution</string>
     <string name="automatic">Automatic</string>
     <string name="edit">edit</string>
     <string name="start">start</string>

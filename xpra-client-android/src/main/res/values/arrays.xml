@@ -35,4 +35,24 @@
         <item>jpeg</item>
         <item>png</item>
     </string-array>
+
+    <!-- how many screen pixels are used for one remote pixel, in percent (0 = screen density) -->
+    <string-array name="resolution_names">
+        <item>Automatic (matches the screen density)</item>
+        <item>Full resolution (sharpest, smallest text)</item>
+        <item>Scaled 125%</item>
+        <item>Scaled 150%</item>
+        <item>Scaled 200%</item>
+        <item>Scaled 250%</item>
+        <item>Scaled 300%</item>
+    </string-array>
+    <string-array name="resolution_values">
+        <item>0</item>
+        <item>100</item>
+        <item>125</item>
+        <item>150</item>
+        <item>200</item>
+        <item>250</item>
+        <item>300</item>
+    </string-array>
 </resources>

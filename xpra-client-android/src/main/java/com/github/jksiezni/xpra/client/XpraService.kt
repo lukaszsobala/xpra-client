@@ -113,6 +113,7 @@ class XpraService : Service() {
     private fun prepareConnector(c: ServerDetails, userInfoHandler: SshUserInfoHandler): XpraConnector {
         // Xpra servers require a user name, even for connections without authentication
         client.setUsername(c.username?.takeIf { it.isNotBlank() } ?: DEFAULT_USERNAME)
+        client.applySettings(c)
         return when (c.type) {
             ConnectionType.TCP -> TcpXpraConnector(client, c.host, c.port)
             ConnectionType.SSH -> {

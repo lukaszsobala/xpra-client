@@ -58,16 +58,15 @@ public class AndroidXpraWindow extends XpraWindow {
 
     public float scale;
 
-    AndroidXpraWindow(NewWindow newWindow, Context context, GLComposer composer) {
-        this(newWindow, context, composer, null);
-    }
-
-    AndroidXpraWindow(NewWindow newWindow, Context context, GLComposer composer, AndroidXpraWindow parent) {
+    /**
+     * @param scale how many screen pixels are used for one pixel of the window
+     */
+    AndroidXpraWindow(NewWindow newWindow, Context context, GLComposer composer, float scale, AndroidXpraWindow parent) {
         super(newWindow);
         this.context = context;
         this.composer = composer;
         this.parent = parent;
-        this.scale = context.getResources().getDisplayMetrics().density;
+        this.scale = scale;
         this.uiHandler = new Handler(Looper.getMainLooper());
         composer.createDrawingTarget(getId());
         if (parent != null) {
