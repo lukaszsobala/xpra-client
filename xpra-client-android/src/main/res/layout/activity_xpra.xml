@@ -24,11 +24,11 @@
     android:orientation="vertical"
     tools:context=".view.XpraActivity" >
 
-    <androidx.appcompat.widget.Toolbar
+    <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary"
+        android:background="?attr/colorSurfaceContainer"
         android:minHeight="@dimen/compact_toolbar_height"
         android:theme="@style/ThemeOverlay.Xpra.CompactToolbar"
         app:titleTextAppearance="@style/TextAppearance.Xpra.CompactToolbarTitle" />

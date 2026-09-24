@@ -22,7 +22,7 @@ import android.app.Dialog
 import android.content.DialogInterface
 import android.os.Bundle
 import android.widget.EditText
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.DialogFragment
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
@@ -42,7 +42,7 @@ class StartCommandDialogFragment : DialogFragment(), DialogInterface.OnClickList
             hint = getString(R.string.hint_start_cmd)
 
         }
-        return AlertDialog.Builder(requireContext())
+        return MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.start_command)
                 .setView(editText)
                 .setPositiveButton(R.string.start, this)

@@ -31,7 +31,7 @@ import android.widget.TextView;
 
 import com.github.jksiezni.xpra.R;
 
-import androidx.appcompat.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 final class CredentialsAskTask extends UiTask<Void, Boolean> {
 
@@ -92,7 +92,7 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
     }
 
 
-    class PasswordDialogBuilder extends AlertDialog.Builder {
+    class PasswordDialogBuilder extends MaterialAlertDialogBuilder {
 
         private LinearLayout layout;
 

@@ -22,6 +22,7 @@ import android.app.Application;
 import android.content.Context;
 
 import com.github.jksiezni.xpra.config.ConfigDatabase;
+import com.google.android.material.color.DynamicColors;
 
 import timber.log.Timber;
 
@@ -31,6 +32,8 @@ public class XpraApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        // Material You: take the theme colours from the wallpaper, on Android 12+
+        DynamicColors.applyToActivitiesIfAvailable(this);
         ConfigDatabase.setup(this);
         Timber.plant(new Timber.DebugTree());
     }

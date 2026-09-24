@@ -47,6 +47,5 @@
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="24dp"
         android:src="@drawable/ic_baseline_add_24"
-        android:tint="?attr/colorSurface"
         app:fabSize="normal" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
