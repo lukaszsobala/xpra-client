@@ -153,6 +153,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
 
     override fun onResume() {
         super.onResume()
+        serviceBinderFragment.whenXpraAvailable { api -> api.xpraClient.activeWindowId = windowId }
         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).addPrimaryClipChangedListener(clipChangedListener)
     }
 

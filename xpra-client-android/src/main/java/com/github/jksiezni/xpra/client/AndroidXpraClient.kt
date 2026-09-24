@@ -29,6 +29,7 @@ import xpra.client.XpraWindow
 import xpra.protocol.PictureEncoding
 import xpra.protocol.packets.DrawPacket
 import xpra.protocol.packets.NewWindow
+import xpra.protocol.packets.NewWindowOverrideRedirect
 
 class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE_ENCODINGS, AndroidXpraKeyboard()) {
 
@@ -70,13 +71,23 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
         setDesktopSize((dm.widthPixels / scale).toInt(), (dm.heightPixels / scale).toInt())
     }
 
+    /**
+     * The window on the screen, ie: of the activity in the foreground.
+     */
+    @Volatile
+    var activeWindowId = 0
+
     override fun onCreateWindow(wnd: NewWindow, parentWindow: XpraWindow?): XpraWindow {
-        return if (parentWindow != null) {
-            val parent = getWindow(parentWindow.id)
-            AndroidXpraWindow(wnd, context, composer, scale, parent)
+        val parent = if (parentWindow != null) {
+            getWindow(parentWindow.id)
+        } else if (wnd is NewWindowOverrideRedirect || wnd.isOverrideRedirect) {
+            // tooltips, and some menus, do not say which window they belong to: show them over
+            // the window on the screen, rather than on a screen of their own
+            getWindow(activeWindowId)
         } else {
-            AndroidXpraWindow(wnd, context, composer, scale, null)
+            null
         }
+        return AndroidXpraWindow(wnd, context, composer, scale, parent)
     }
 
     override fun onWindowStarted(window: XpraWindow) {
