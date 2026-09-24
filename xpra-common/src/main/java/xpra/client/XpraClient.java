@@ -436,6 +436,15 @@ public abstract class XpraClient {
             handshakeComplete = true;
             final Object startCommands = response.getCaps().get("start-new-commands");
             startNewCommands = asBoolean(startCommands);
+            // older servers may send their menu with the hello, not in a "setting-change":
+            for (String key : new String[]{"menu", "xdg-menu"}) {
+                final List<ServerApp> apps = ServerApp.fromMenu(response.getCaps().get(key));
+                if (!apps.isEmpty()) {
+                    serverApps = Collections.unmodifiableList(apps);
+                    onServerAppsChanged(serverApps);
+                    break;
+                }
+            }
             LOGGER.debug(response.toString());
         }
     }

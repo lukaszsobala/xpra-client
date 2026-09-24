@@ -93,6 +93,9 @@ class ActiveConnectionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val windowsHeader = SectionHeaderAdapter(R.string.open_windows)
         val appsHeader = SectionHeaderAdapter(R.string.server_apps)
+        // says why there are no apps:
+        val appsHint = SectionHeaderAdapter(R.string.no_server_apps, R.layout.hint_item)
+        this.appsHint = appsHint
         val adapter = TasksAdapter { windows ->
             windowsHeader.visible = windows.isNotEmpty()
             updateEmptyView()
@@ -112,7 +115,7 @@ class ActiveConnectionFragment : Fragment() {
                     AppShortcuts.pin(requireContext(), server, app.name, app.command, app.wmClass, icon)
                 }
             })
-        binding.windowsRecyclerView.adapter = ConcatAdapter(windowsHeader, adapter, appsHeader, appsAdapter)
+        binding.windowsRecyclerView.adapter = ConcatAdapter(windowsHeader, adapter, appsHeader, appsHint, appsAdapter)
         tasksAdapter = adapter
         this.appsAdapter = appsAdapter
 
@@ -125,7 +128,9 @@ class ActiveConnectionFragment : Fragment() {
                 adapter.submitList(items)
             }
             api.xpraClient.getServerAppsLiveData().observe(viewLifecycleOwner) { apps ->
-                appsHeader.visible = apps.isNotEmpty()
+                appsHeader.visible = apps.isNotEmpty() || api.isConnected
+                appsHint.title = if (api.xpraClient.canStartCommands()) R.string.no_server_apps else R.string.cannot_start_apps
+                appsHint.visible = apps.isEmpty() && api.isConnected
                 appsAdapter.submitList(apps) { updateEmptyView() }
             }
         }
@@ -137,9 +142,11 @@ class ActiveConnectionFragment : Fragment() {
 
     private var tasksAdapter: TasksAdapter? = null
     private var appsAdapter: ServerAppsAdapter? = null
+    private var appsHint: SectionHeaderAdapter? = null
 
     private fun updateEmptyView() {
         val empty = (tasksAdapter?.itemCount ?: 0) == 0 && (appsAdapter?.itemCount ?: 0) == 0
+            && appsHint?.visible != true
         _binding?.emptyView?.visibility = if (empty) View.VISIBLE else View.GONE
     }
 
@@ -148,6 +155,7 @@ class ActiveConnectionFragment : Fragment() {
         disposables.clear()
         tasksAdapter = null
         appsAdapter = null
+        appsHint = null
         _binding = null
     }
 

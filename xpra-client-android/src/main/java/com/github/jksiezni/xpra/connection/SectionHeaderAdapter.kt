@@ -22,14 +22,27 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.annotation.LayoutRes
 import androidx.annotation.StringRes
 import androidx.recyclerview.widget.RecyclerView
 import com.github.jksiezni.xpra.R
 
 /**
- * The title of a section of a list, shown only while the section has items.
+ * The title of a section of a list, shown only while the section has items, or a message.
  */
-class SectionHeaderAdapter(@StringRes private val title: Int) : RecyclerView.Adapter<SectionHeaderAdapter.ViewHolder>() {
+class SectionHeaderAdapter(
+    @StringRes title: Int,
+    @LayoutRes private val layout: Int = R.layout.section_header_item
+) : RecyclerView.Adapter<SectionHeaderAdapter.ViewHolder>() {
+
+    @StringRes
+    var title: Int = title
+        set(value) {
+            if (field != value) {
+                field = value
+                if (visible) notifyItemChanged(0)
+            }
+        }
 
     var visible = false
         set(value) {
@@ -42,7 +55,7 @@ class SectionHeaderAdapter(@StringRes private val title: Int) : RecyclerView.Ada
     override fun getItemCount() = if (visible) 1 else 0
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.section_header_item, parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(layout, parent, false)
         return ViewHolder(view as TextView)
     }
 

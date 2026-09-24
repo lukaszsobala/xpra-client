@@ -80,7 +80,11 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
             }
             event.offsetLocation(x, y)
             when (event.actionMasked) {
-                MotionEvent.ACTION_HOVER_MOVE, MotionEvent.ACTION_HOVER_ENTER -> window.movePointer(wx(event), wy(event))
+                MotionEvent.ACTION_HOVER_MOVE, MotionEvent.ACTION_HOVER_ENTER -> {
+                    window.movePointer(wx(event), wy(event))
+                    // pan while zoomed in, when the mouse gets near an edge:
+                    (parent as? WorkspaceView)?.let { it.keepVisible(event.x - it.scrollX, event.y - it.scrollY) }
+                }
                 MotionEvent.ACTION_SCROLL -> {
                     window.movePointer(wx(event), wy(event))
                     pendingScrollY += event.getAxisValue(MotionEvent.AXIS_VSCROLL)

@@ -78,6 +78,7 @@ public class HelloRequest extends xpra.protocol.IOPacket {
         caps.put("menu", true);
         // servers older than 6.4:
         caps.put("xdg-menu", true);
+        caps.put("xdg-menu-update", true);
 
         // it is required, if client wants to display windows (since 4.x)
         caps.put("windows", true);

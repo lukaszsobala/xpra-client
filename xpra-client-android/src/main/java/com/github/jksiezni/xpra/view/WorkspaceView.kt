@@ -126,6 +126,13 @@ class WorkspaceView : FrameLayout {
         return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
     }
 
+    /**
+     * Keeps a point of this view on the screen while zoomed in, see [ZoomLayout.keepVisible].
+     */
+    fun keepVisible(x: Float, y: Float) {
+        (parent as? ZoomLayout)?.keepVisible(x, y)
+    }
+
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
         if (touchpadMode) {
@@ -199,7 +206,8 @@ class WorkspaceView : FrameLayout {
         fun drawPointer(canvas: Canvas) {
             canvas.save()
             canvas.translate(pointerX, pointerY)
-            canvas.scale(density, density)
+            // the same size, whatever the zoom:
+            canvas.scale(density / scaleX, density / scaleY)
             canvas.drawPath(pointerPath, fill)
             canvas.drawPath(pointerPath, outline)
             canvas.restore()
@@ -288,6 +296,7 @@ class WorkspaceView : FrameLayout {
             target()?.let { view ->
                 view.window.movePointer(toWindow(pointerX, view), toWindow(pointerY, view))
             }
+            keepVisible(pointerX - scrollX, pointerY - scrollY)
             invalidate()
         }
 

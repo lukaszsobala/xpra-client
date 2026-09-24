@@ -64,6 +64,7 @@
     <string name="hide_toolbar">Hide the toolbar</string>
     <string name="open_windows">Open windows</string>
     <string name="server_apps">Apps</string>
+    <string name="no_server_apps">The server has not sent any apps. It needs the python3-xdg package, and a menu file in /etc/xdg/menus, ie: from the lxmenu-data package.</string>
     <string name="add_to_home_screen">Add to home screen</string>
     <string name="pin_not_supported">Your launcher cannot add icons to the home screen</string>
     <string name="app_not_found">This window does not belong to an app the server knows</string>
