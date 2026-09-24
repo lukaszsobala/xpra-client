@@ -54,12 +54,11 @@ class ExtraKeysView @JvmOverloads constructor(context: Context, attrs: Attribute
     private class Key(val label: String, val keysym: String, val modifier: Boolean = false, val icon: Int = 0)
 
     private val keys = listOf(
+        // the most used keys first, so that they fit on the screen without scrolling:
         Key("Esc", "Escape"),
         Key("Tab", "Tab"),
         Key("Ctrl", "Control_L", true),
         Key("Alt", "Alt_L", true),
-        Key("Super", "Super_L", true),
-        Key("Shift", "Shift_L", true),
         Key("Left", "Left", icon = R.drawable.ic_key_left_24),
         Key("Down", "Down", icon = R.drawable.ic_key_down_24),
         Key("Up", "Up", icon = R.drawable.ic_key_up_24),
@@ -68,19 +67,24 @@ class ExtraKeysView @JvmOverloads constructor(context: Context, attrs: Attribute
         Key("End", "End"),
         Key("PgUp", "Prior"),
         Key("PgDn", "Next"),
-        Key("Ins", "Insert"),
         Key("Del", "Delete"),
+        Key("Super", "Super_L", true),
+        Key("Shift", "Shift_L", true),
+        Key("Ins", "Insert"),
     ) + (1..12).map { Key("F$it", "F$it") }
 
     private val modifierButtons = mutableMapOf<String, MaterialButton>()
 
     init {
         isHorizontalScrollBarEnabled = false
+        // fade out the keys at the edges, to show that there are more to scroll to:
+        isHorizontalFadingEdgeEnabled = true
+        setFadingEdgeLength(dp(32))
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val spacing = dp(2)
+        val spacing = dp(1)
         row.setPadding(0, dp(2), 0, dp(2))
         for (key in keys) {
             val button = MaterialButton(context, null,
@@ -97,14 +101,14 @@ class ExtraKeysView @JvmOverloads constructor(context: Context, attrs: Attribute
                 }
                 isAllCaps = false
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                minWidth = dp(44)
-                minimumWidth = dp(44)
+                minWidth = dp(40)
+                minimumWidth = dp(40)
                 minHeight = 0
                 minimumHeight = 0
                 insetTop = 0
                 insetBottom = 0
                 cornerRadius = dp(8)
-                setPadding(dp(8), 0, dp(8), 0)
+                setPadding(dp(6), 0, dp(6), 0)
                 // the keyboard must stay attached to the window, not move to the buttons:
                 isFocusable = false
                 contentDescription = key.label
