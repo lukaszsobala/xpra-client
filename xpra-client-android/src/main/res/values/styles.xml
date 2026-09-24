@@ -22,7 +22,7 @@
         Base application theme, dependent on API level. This theme is replaced
         by AppBaseTheme from res/values-vXX/styles.xml on newer devices.
     -->
-    <style name="AppBaseTheme" parent="Theme.MaterialComponents.Light.NoActionBar.Bridge">
+    <style name="AppBaseTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <!--
             Theme customizations available in newer API levels can go in
             res/values-vXX/styles.xml, while customizations related to
@@ -36,22 +36,30 @@
     </style>
 
     <!-- Application theme. -->
+    <!-- Material 3: the colours come from the wallpaper on Android 12+ (see XpraApplication),
+         or are the Material 3 baseline ones, in both the light and the dark theme -->
     <style name="AppTheme" parent="AppBaseTheme">
         <!-- All customizations that are NOT specific to a particular API-level can go here. -->
         <!--<item name="android:windowFullscreen">true</item>-->
-        <item name="colorPrimary">@color/primaryColor</item>
-        <item name="colorPrimaryDark">@color/primaryDarkColor</item>
-        <item name="colorAccent">@color/secondaryColor</item>
         <item name="drawerArrowStyle">@style/DrawerArrowStyle</item>
 
         <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
     </style>
 
-    <style name="AppTheme.Translucent" parent="Theme.AppCompat.Light.Dialog.MinWidth">
+    <style name="AppTheme.Translucent" parent="Theme.Material3.DayNight.Dialog.MinWidth">
 
     </style>
 
     
+    <!-- the compact toolbar of the window screens: action buttons follow its height -->
+    <style name="ThemeOverlay.Xpra.CompactToolbar" parent="">
+        <item name="actionBarSize">@dimen/compact_toolbar_height</item>
+    </style>
+
+    <style name="TextAppearance.Xpra.CompactToolbarTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textSize">@dimen/compact_toolbar_title_size</item>
+    </style>
+
     <style name="DrawerArrowStyle" parent="Widget.AppCompat.DrawerArrowToggle">
         <item name="spinBars">true</item>
 

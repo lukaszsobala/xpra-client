@@ -40,7 +40,7 @@ public class CursorPacket extends xpra.protocol.Packet {
     public void deserialize(Iterator<Object> iter) {
         super.deserialize(iter);
         Object first = iter.next();
-        if (first instanceof byte[]) {
+        if (first instanceof String || first instanceof byte[]) {
             encoding = asString(first);
             if (encoding.isEmpty()) {
                 empty = true;

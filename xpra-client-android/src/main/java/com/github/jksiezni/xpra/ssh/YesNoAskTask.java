@@ -22,7 +22,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 
-import androidx.appcompat.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 class YesNoAskTask extends UiTask<String, Boolean> {
 
@@ -37,7 +37,7 @@ class YesNoAskTask extends UiTask<String, Boolean> {
         new YesNoDialog(context, params[0]).show();
     }
 
-    public class YesNoDialog extends AlertDialog.Builder {
+    public class YesNoDialog extends MaterialAlertDialogBuilder {
 
         public YesNoDialog(Context ctx, String message) {
             super(ctx);

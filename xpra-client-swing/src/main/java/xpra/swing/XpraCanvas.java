@@ -111,7 +111,7 @@ public class XpraCanvas extends Canvas implements HierarchyListener, MouseListen
                     Transparency.OPAQUE,
                     DataBuffer.TYPE_BYTE);
                 WritableRaster raster = Raster.createInterleavedRaster(DataBuffer.TYPE_BYTE,
-                    packet.w, packet.h, packet.rowstride, 3,
+                    packet.w, packet.h, packet.w * 3, 3,
                     bOffs, null);
 
                 img = new BufferedImage(colorModel, raster, true, null);

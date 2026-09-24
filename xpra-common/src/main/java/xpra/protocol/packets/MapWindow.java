@@ -25,6 +25,22 @@ public class MapWindow extends WindowPacket {
 		elems.add(y);
 		elems.add(width);
 		elems.add(height);
+		if (maximized) {
+			// the client properties, then the window state:
+			elems.add(java.util.Collections.emptyMap());
+			elems.add(java.util.Collections.singletonMap("maximized", true));
+		}
 	}
+
+	/**
+	 * Tells the server that the window fills the screen, so that applications drawing their own
+	 * frame, ie: VS Code, do not draw the border they draw around windows that are not maximized.
+	 */
+	public MapWindow setMaximized(boolean maximized) {
+		this.maximized = maximized;
+		return this;
+	}
+
+	private boolean maximized;
 
 }

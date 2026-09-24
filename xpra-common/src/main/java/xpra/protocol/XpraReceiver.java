@@ -22,12 +22,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import xpra.protocol.packets.ConfigureWindowOverrideRedirect;
+import xpra.protocol.packets.ClipboardPacket;
 import xpra.protocol.packets.CursorPacket;
 import xpra.protocol.packets.Disconnect;
 import xpra.protocol.packets.DrawPacket;
@@ -37,7 +41,6 @@ import xpra.protocol.packets.NewWindow;
 import xpra.protocol.packets.NewWindowOverrideRedirect;
 import xpra.protocol.packets.Ping;
 import xpra.protocol.packets.RaiseWindow;
-import xpra.protocol.packets.SetDeflate;
 import xpra.protocol.packets.StartupComplete;
 import xpra.protocol.packets.WindowIcon;
 import xpra.protocol.packets.WindowMetadata;
@@ -59,7 +62,6 @@ public class XpraReceiver {
         PACKETS_MAP.put("disconnect", Disconnect::new);
         PACKETS_MAP.put("new-window", NewWindow::new);
         PACKETS_MAP.put("new-override-redirect", NewWindowOverrideRedirect::new);
-        PACKETS_MAP.put("set_deflate", SetDeflate::new);
         PACKETS_MAP.put("draw", DrawPacket::new);
         PACKETS_MAP.put("window-metadata", WindowMetadata::new);
         PACKETS_MAP.put("lost-window", LostWindow::new);
@@ -67,7 +69,22 @@ public class XpraReceiver {
         PACKETS_MAP.put("configure-override-redirect", ConfigureWindowOverrideRedirect::new);
         PACKETS_MAP.put("raise-window", RaiseWindow::new);
         //PACKETS_MAP.put("notify_show", NotifyShow::new);
+        for (String type : new String[]{"clipboard-token", "clipboard-request", "clipboard-contents",
+            "clipboard-contents-none", "clipboard-pending-requests", "clipboard-enable-selections",
+            "set-clipboard-enabled"}) {
+            PACKETS_MAP.put(type, () -> new ClipboardPacket(type));
+        }
     }
+
+    /**
+     * Packets sent by servers, which this client can safely ignore.
+     */
+    private static final Set<String> IGNORED_PACKETS = new HashSet<>(Arrays.asList(
+        "encodings", "server-event", "setting-change", "ping_echo", "info-response",
+        "set-cursors", "bell", "eos", "window-move-resize", "window-resized",
+        "restack-window", "initiate-moveresize", "pointer-grab", "pointer-ungrab",
+        "notify_show", "notify_close", "desktop_size", "control"
+    ));
 
     public <T extends Packet> void registerHandler(Class<T> packetClass, PacketHandler<T> handler) {
         handlers.put(packetClass, handler);
@@ -84,18 +101,29 @@ public class XpraReceiver {
         Builder<Packet> builder = PACKETS_MAP.get(type);
         if (builder != null) {
             Packet packet = builder.build();
-            packet.deserialize(it);
-            logger.trace("onReceive(): " + packet);
-            process(packet);
+            try {
+                packet.deserialize(it);
+                logger.trace("onReceive(): " + packet);
+                process(packet);
+            } catch (RuntimeException e) {
+                // an unexpected packet format should not bring down the whole connection
+                logger.error("Failed to process packet: " + type, e);
+            }
+        } else if (IGNORED_PACKETS.contains(type)) {
+            logger.debug("Ignoring packet: " + type);
         } else {
-            logger.error("Not supported packet: " + type + ": " + dp);
+            logger.warn("Not supported packet: " + type);
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private void process(Packet packet) throws IOException {
         PacketHandler handler = handlers.get(packet.getClass());
-        handler.process(packet);
+        if (handler != null) {
+            handler.process(packet);
+        } else {
+            logger.debug("No handler for: " + packet);
+        }
     }
 
     private interface Builder<T> {

@@ -18,8 +18,10 @@
 package com.github.jksiezni.xpra.client
 
 import android.content.Context
+import android.util.DisplayMetrics
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.gl.GLComposer
 import timber.log.Timber
 import xpra.client.XpraClient
@@ -27,26 +29,65 @@ import xpra.client.XpraWindow
 import xpra.protocol.PictureEncoding
 import xpra.protocol.packets.DrawPacket
 import xpra.protocol.packets.NewWindow
+import xpra.protocol.packets.NewWindowOverrideRedirect
 
 class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE_ENCODINGS, AndroidXpraKeyboard()) {
 
     private val windowsLiveData = MutableLiveData<Collection<XpraWindow>>()
     private val listeners: MutableList<XpraEventListener> = mutableListOf()
 
-    private val composer = GLComposer(this::onDrawFinished)
+    private val composer = GLComposer(this::onDrawFinished) { windowId -> getWindow(windowId)?.requestRefresh() }
+
+    /**
+     * How many screen pixels are used for one pixel of the remote windows.
+     */
+    var scale: Float = context.resources.displayMetrics.density
+        private set
 
     init {
-        val dm = context.resources.displayMetrics
-        setDesktopSize(dm.widthPixels, dm.heightPixels)
+        applySettings(ServerDetails())
     }
 
-    override fun onCreateWindow(wnd: NewWindow, parentWindow: XpraWindow?): XpraWindow {
-        return if (parentWindow != null) {
-            val parent = getWindow(parentWindow.id)
-            AndroidXpraWindow(wnd, context, composer, parent)
+    /**
+     * Applies the per-connection settings, before connecting.
+     */
+    fun applySettings(serverDetails: ServerDetails) {
+        val dm = context.resources.displayMetrics
+        scale = if (serverDetails.scalePercent > 0) serverDetails.scalePercent / 100f else dm.density
+        updateDesktopSize(dm)
+        setPictureEncoding(serverDetails.pictureEncoding)
+        if (serverDetails.clipboardSharing) {
+            enableClipboard(AndroidClipboard(context))
         } else {
-            AndroidXpraWindow(wnd, context, composer)
+            disableClipboard()
         }
+    }
+
+    /**
+     * Makes the server's virtual screen match the area our windows can use, ie: after the
+     * device was rotated. Servers clamp windows to their screen size.
+     */
+    fun updateDesktopSize(dm: DisplayMetrics) {
+        setDesktopSize((dm.widthPixels / scale).toInt(), (dm.heightPixels / scale).toInt())
+    }
+
+    /**
+     * The window on the screen, ie: of the activity in the foreground.
+     */
+    @Volatile
+    var activeWindowId = 0
+
+    override fun onCreateWindow(wnd: NewWindow, parentWindow: XpraWindow?): XpraWindow {
+        val parent = if (parentWindow != null) {
+            getWindow(parentWindow.id)
+        } else if (wnd is NewWindowOverrideRedirect || wnd.isOverrideRedirect) {
+            // tooltips, and some menus, do not say which window they belong to: show them over
+            // the window on the screen, rather than on a screen of their own
+            getWindow(activeWindowId)
+        } else {
+            null
+        }
+        return AndroidXpraWindow(wnd, context, composer, scale, parent)
     }
 
     override fun onWindowStarted(window: XpraWindow) {

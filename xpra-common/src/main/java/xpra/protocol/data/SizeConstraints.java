@@ -23,6 +23,11 @@ package xpra.protocol.data;
  */
 public class SizeConstraints {
 
+    /**
+     * The X11 default window gravity.
+     */
+    public static final int GRAVITY_NORTH_WEST = 1;
+
     public final int gravity;
     public final int minimumWidth;
     public final int minimumHeight;

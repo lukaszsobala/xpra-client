@@ -33,6 +33,7 @@
     <string name="connecting">Connecting…</string>
     <string name="picture_encoding">Picture Encoding</string>
     <string name="advanced">Advanced</string>
+    <string name="resolution">Resolution</string>
     <string name="automatic">Automatic</string>
     <string name="edit">edit</string>
     <string name="start">start</string>
@@ -46,4 +47,19 @@
     <string name="cancel">Cancel</string>
     <string name="hint_start_cmd">ex. xterm</string>
 
+    <string name="remember_password">Remember password</string>
+    <string name="forget_passwords">Forget saved passwords</string>
+    <string name="forget_passwords_summary">Saved passwords are encrypted with a key that never leaves this device</string>
+    <string name="no_saved_passwords">No saved passwords</string>
+    <string name="passwords_forgotten">Saved passwords forgotten</string>
+    <string name="touchpad_mode">Touchpad mode</string>
+    <string name="direct_touch_mode">Direct touch mode</string>
+    <string name="touchpad_mode_on">Touchpad: move the pointer with a finger, tap to click</string>
+    <string name="direct_touch_mode_on">Direct touch: tap where you want to click</string>
+    <string name="clipboard_sharing">Share the clipboard</string>
+    <string name="clipboard_sharing_summary">Text copied on this device can be pasted on the server, and the other way round</string>
+    <!-- a modifier key held down until tapped again, ie: "Ctrl 🔒" -->
+    <string name="locked_key">%1$s 🔒</string>
+    <string name="show_toolbar">Show the toolbar</string>
+    <string name="hide_toolbar">Hide the toolbar</string>
 </resources>

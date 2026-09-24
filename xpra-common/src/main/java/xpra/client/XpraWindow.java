@@ -25,6 +25,7 @@ import xpra.protocol.packets.ConfigureWindow;
 import xpra.protocol.packets.DamageSequence;
 import xpra.protocol.packets.DrawPacket;
 import xpra.protocol.packets.FocusRequest;
+import xpra.protocol.packets.BufferRefresh;
 import xpra.protocol.packets.KeyAction;
 import xpra.protocol.packets.MapWindow;
 import xpra.protocol.packets.MouseButtonAction;
@@ -167,14 +168,28 @@ public abstract class XpraWindow {
 	}
 
 	protected void mapWindow(int x, int y, int width, int height) {
+		mapWindow(x, y, width, height, false);
+	}
+
+	/**
+	 * @param maximized true if the window fills the screen
+	 */
+	protected void mapWindow(int x, int y, int width, int height, boolean maximized) {
 	    if (!mapped) {
-            sender.send(new MapWindow(id, x, y, width, height));
+            sender.send(new MapWindow(id, x, y, width, height).setMaximized(maximized));
             mapped = true;
         }
 	}
 	
 	protected void configureWindow(int x, int y, int width, int height) {
-		sender.send(new ConfigureWindow(id, x, y, width, height));
+		configureWindow(x, y, width, height, false);
+	}
+
+	/**
+	 * @param maximized true if the window fills the screen
+	 */
+	protected void configureWindow(int x, int y, int width, int height, boolean maximized) {
+		sender.send(new ConfigureWindow(id, x, y, width, height).setMaximized(maximized));
 	}
 	
 	protected void unmapWindow() {
@@ -186,6 +201,15 @@ public abstract class XpraWindow {
 
     public boolean isShown() {
         return mapped;
+    }
+
+    /**
+     * Asks the server to send the whole window again, ie: after its contents were lost.
+     */
+    public void requestRefresh() {
+        if (sender != null) {
+            sender.send(new BufferRefresh(id));
+        }
     }
 
     protected void closeWindow() {
@@ -205,5 +229,20 @@ public abstract class XpraWindow {
 	
 	public void keyboardAction(int keycode, String keyname, boolean pressed) {
 		sender.send(new KeyAction(id, keycode, keyname, pressed));
+	}
+
+	/**
+	 * @param modifiers the modifiers held down, ie: "shift" or "control"
+	 * @param string the text produced by the key, if any
+	 */
+	public void keyboardAction(int keycode, String keyname, boolean pressed, java.util.List<String> modifiers, String string) {
+		sender.send(new KeyAction(id, keycode, keyname, pressed, modifiers, string));
+	}
+
+	/**
+	 * Sends a new keyboard map to the server.
+	 */
+	public void keymapChanged(java.util.Map<String, Object> keymap) {
+		sender.send(new xpra.protocol.packets.KeymapChanged(keymap));
 	}
 }

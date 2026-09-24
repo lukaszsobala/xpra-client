@@ -18,5 +18,6 @@
   -->
 
 <full-backup-content>
-    <!-- Exclude specific shared preferences that contain GCM registration Id -->
+    <!-- saved passwords: useless elsewhere, as their key stays in this device's keystore -->
+    <exclude domain="sharedpref" path="saved_passwords.xml" />
 </full-backup-content>

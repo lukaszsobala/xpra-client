@@ -20,11 +20,11 @@ package xpra.protocol.packets;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import xpra.compression.CompressionException;
-import xpra.compression.Decompressor;
-import xpra.compression.Decompressors;
+import xpra.compression.LZ4;
 import xpra.protocol.PictureEncoding;
 
 public class DrawPacket extends WindowPacket {
@@ -60,15 +60,81 @@ public class DrawPacket extends WindowPacket {
         }
     }
 
+    /**
+     * Returns the pixels of an "rgb24" or "rgb32" update, decompressed and tightly packed
+     * ({@code w * bytesPerPixel} bytes per row), in the {@link #getRgbFormat() rgb format} sent by the server.
+     */
     public byte[] readPixels() throws CompressionException {
-        if (options.containsKey(Decompressors.COMP_ZLIB)) {
-            Decompressor d = Decompressors.getByName(Decompressors.COMP_ZLIB);
-            byte[] pixels = new byte[w * h * 3];
-            d.decompress(data, pixels);
-            return pixels;
-        } else {
-            return data;
+        byte[] pixels = data;
+        if (options.containsKey("lz4")) {
+            pixels = LZ4.decompress(pixels);
+        } else if (options.containsKey("zlib") || options.containsKey("brotli")) {
+            throw new CompressionException("unsupported pixel compression: " + options.keySet());
         }
+        final int bytesPerPixel = encoding == PictureEncoding.rgb24 ? 3 : 4;
+        final int packedStride = w * bytesPerPixel;
+        if (rowstride <= packedStride || h <= 1) {
+            return pixels;
+        }
+        // remove the padding at the end of each row:
+        final byte[] packed = new byte[packedStride * h];
+        for (int row = 0; row < h; ++row) {
+            System.arraycopy(pixels, row * rowstride, packed, row * packedStride, packedStride);
+        }
+        return packed;
+    }
+
+    /**
+     * Returns the pixels of an "rgb24" or "rgb32" update as tightly packed RGBA,
+     * converting the other {@link #getRgbFormat() rgb formats} and making "X" padding opaque.
+     */
+    public byte[] readRgbaPixels() throws CompressionException {
+        final byte[] pixels = readPixels();
+        final String format = getRgbFormat();
+        if ("RGBA".equals(format)) {
+            return pixels;
+        }
+        final int bytesPerPixel = format.length();
+        final int red = format.indexOf('R');
+        final int green = format.indexOf('G');
+        final int blue = format.indexOf('B');
+        final int alpha = format.indexOf('A');
+        if ((bytesPerPixel != 3 && bytesPerPixel != 4) || red < 0 || green < 0 || blue < 0) {
+            throw new CompressionException("unsupported rgb format: " + format);
+        }
+        final int count = pixels.length / bytesPerPixel;
+        final byte[] rgba = new byte[count * 4];
+        for (int i = 0, src = 0, dst = 0; i < count; ++i, src += bytesPerPixel, dst += 4) {
+            rgba[dst] = pixels[src + red];
+            rgba[dst + 1] = pixels[src + green];
+            rgba[dst + 2] = pixels[src + blue];
+            rgba[dst + 3] = alpha >= 0 ? pixels[src + alpha] : (byte) 0xFF;
+        }
+        return rgba;
+    }
+
+    /**
+     * @return the size of the window when the server sent this update, as {@code {width, height}},
+     * or {@code null} if the server did not include it
+     */
+    public int[] getWindowSize() {
+        final Object size = options.get("window-size");
+        if (size instanceof List && ((List<?>) size).size() >= 2) {
+            final List<?> list = (List<?>) size;
+            return new int[]{asInt(list.get(0)), asInt(list.get(1))};
+        }
+        return null;
+    }
+
+    /**
+     * @return the pixel format of "rgb24" and "rgb32" updates, ie: "RGB", "RGBX" or "RGBA"
+     */
+    public String getRgbFormat() {
+        final Object format = options.get("rgb_format");
+        if (format != null) {
+            return asString(format);
+        }
+        return encoding == PictureEncoding.rgb24 ? "RGB" : "RGBX";
     }
 
     public String getOption(String key) {

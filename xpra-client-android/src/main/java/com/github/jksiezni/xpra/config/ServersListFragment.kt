@@ -23,6 +23,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.*
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.github.jksiezni.xpra.ConnectXpraActivity
@@ -41,6 +42,12 @@ class ServersListFragment : Fragment() {
     private val disposables = CompositeDisposable()
     private val service by lazy { ServiceBinderFragment.obtain(activity) }
     private val adapter = ServerDetailsAdapter()
+
+    private val connectLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            openActiveConnection()
+        }
+    }
 
     private var _binding: ServersFragmentBinding? = null
     private val binding get() = _binding!!
@@ -89,7 +96,7 @@ class ServersListFragment : Fragment() {
                     Timber.v("User intents to connect with xpra..")
                     val intent = Intent(context, ConnectXpraActivity::class.java)
                     intent.putExtra(ConnectXpraActivity.EXTRA_CONNECTION_ID, item.id)
-                    startActivityForResult(intent, RESULT_CONNECTION)
+                    connectLauncher.launch(intent)
                 }
             }
         }.addTo(disposables)
@@ -115,13 +122,6 @@ class ServersListFragment : Fragment() {
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.servers_menu, menu)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == RESULT_CONNECTION && resultCode == Activity.RESULT_OK) {
-            openActiveConnection()
-        }
     }
 
     private fun openActiveConnection() {
@@ -158,10 +158,6 @@ class ServersListFragment : Fragment() {
                 .replace(id, ServerDetailsFragment.create(connection))
                 .addToBackStack(null)
                 .commit()
-    }
-
-    companion object {
-        private const val RESULT_CONNECTION = 1
     }
 
     init {

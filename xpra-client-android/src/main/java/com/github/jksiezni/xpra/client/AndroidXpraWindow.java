@@ -58,16 +58,15 @@ public class AndroidXpraWindow extends XpraWindow {
 
     public float scale;
 
-    AndroidXpraWindow(NewWindow newWindow, Context context, GLComposer composer) {
-        this(newWindow, context, composer, null);
-    }
-
-    AndroidXpraWindow(NewWindow newWindow, Context context, GLComposer composer, AndroidXpraWindow parent) {
+    /**
+     * @param scale how many screen pixels are used for one pixel of the window
+     */
+    AndroidXpraWindow(NewWindow newWindow, Context context, GLComposer composer, float scale, AndroidXpraWindow parent) {
         super(newWindow);
         this.context = context;
         this.composer = composer;
         this.parent = parent;
-        this.scale = context.getResources().getDisplayMetrics().density;
+        this.scale = scale;
         this.uiHandler = new Handler(Looper.getMainLooper());
         composer.createDrawingTarget(getId());
         if (parent != null) {
@@ -162,8 +161,24 @@ public class AndroidXpraWindow extends XpraWindow {
             int h = (int) (height / scale);
             int x = hasParent() ? getX() : 0;
             int y = hasParent() ? getY() : 0;
-            mapWindow(x, y, w, h);
+            // a window without a parent fills the screen:
+            mapWindow(x, y, w, h, !hasParent());
+            // v6.5 servers still consider a window focused after it was unmapped (ie: when the
+            // device rotates), and ignore the focus request, which leaves the keyboard without
+            // a window: clear the focus first.
+            setFocused(false);
             setFocused(true);
+        }
+    }
+
+    /**
+     * Resizes the window on the server to its new view size, ie: when the soft keyboard or the
+     * system bars take some of the screen. Windows are drawn stretched to fill their view, so
+     * without this, the picture is squashed and touches land away from the finger.
+     */
+    public void resize(int width, int height) {
+        if (!isOverrideRedirect() && !hasParent() && isShown()) {
+            configureWindow(0, 0, (int) (width / scale), (int) (height / scale), true);
         }
     }
 

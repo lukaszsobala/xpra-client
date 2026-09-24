@@ -40,8 +40,9 @@ public class HelloResponse extends xpra.protocol.Packet {
 		return capabilities;
 	}
 
-	public boolean isRencode() {
-		return asBoolean(capabilities.get("rencode"));
+	public String getVersion() {
+		final Object version = capabilities.get("version");
+		return version != null ? asString(version) : "unknown";
 	}
 
 	public List<String> getStringArray(String key) {
@@ -59,8 +60,7 @@ public class HelloResponse extends xpra.protocol.Packet {
 	@Override
 	public String toString() {
 		return getClass().getSimpleName() + ": "
-				+ "encodings.allowed=" + getStringArray("encodings.allowed")
-				+ ", encodings=" + getStringArray("encodings")
+				+ "version=" + getVersion()
 				+ ", root-window-size=" + capabilities.get("root_window_size")
 				+ ", All caps: " + capabilities.keySet();
 	}

@@ -32,7 +32,8 @@ import xpra.protocol.XpraReceiver;
 import xpra.protocol.XpraSender;
 import xpra.protocol.packets.ConfigureWindowOverrideRedirect;
 import xpra.protocol.packets.CursorPacket;
-import xpra.protocol.packets.DesktopSize;
+import xpra.protocol.packets.ClipboardPacket;
+import xpra.protocol.packets.ConfigureDisplay;
 import xpra.protocol.packets.Disconnect;
 import xpra.protocol.packets.DrawPacket;
 import xpra.protocol.packets.HelloRequest;
@@ -43,7 +44,6 @@ import xpra.protocol.packets.NewWindowOverrideRedirect;
 import xpra.protocol.packets.Ping;
 import xpra.protocol.packets.PingEcho;
 import xpra.protocol.packets.RaiseWindow;
-import xpra.protocol.packets.SetDeflate;
 import xpra.protocol.packets.StartupComplete;
 import xpra.protocol.packets.WindowIcon;
 import xpra.protocol.packets.WindowMetadata;
@@ -63,6 +63,7 @@ public abstract class XpraClient {
     private PictureEncoding encoding;
     private int desktopWidth;
     private int desktopHeight;
+    private String username;
     private int dpi = 96;
     private int xdpi;
     private int ydpi;
@@ -71,6 +72,17 @@ public abstract class XpraClient {
      * It is set to true, when a disconnect packet is sent from a Server.
      */
     private boolean disconnectedByServer;
+
+    /**
+     * The reason given by the Server in its disconnect packet, if any.
+     */
+    private String disconnectReason;
+
+    /**
+     * It is set to true, when the hello packet is received from a Server.
+     */
+    private volatile boolean handshakeComplete;
+    private ClipboardSync clipboard;
 
 
     public XpraClient(int desktopWidth, int desktopHeight, PictureEncoding[] supportedPictureEncodings) {
@@ -88,10 +100,19 @@ public abstract class XpraClient {
         //  setup packet handlers
         receiver.registerHandler(HelloResponse.class, new HelloHandler());
         receiver.registerHandler(Ping.class, new PingHandler());
+        receiver.registerHandler(ClipboardPacket.class, new XpraReceiver.PacketHandler<ClipboardPacket>() {
+            @Override
+            public void process(ClipboardPacket packet) {
+                if (clipboard != null) {
+                    clipboard.process(packet);
+                }
+            }
+        });
         receiver.registerHandler(Disconnect.class, new XpraReceiver.PacketHandler<Disconnect>() {
             @Override
             public void process(Disconnect response) throws IOException {
-                LOGGER.debug("Server disconnected with msg: " + response.reason);
+                LOGGER.info("Server disconnected with msg: " + response.reason);
+                disconnectReason = response.reason;
                 disconnectedByServer = true;
             }
         });
@@ -117,12 +138,6 @@ public abstract class XpraClient {
                 windows.put(window.getId(), window);
                 window.onStart(response);
                 onWindowStarted(window);
-            }
-        });
-        receiver.registerHandler(SetDeflate.class, new XpraReceiver.PacketHandler<SetDeflate>() {
-            @Override
-            public void process(SetDeflate response) throws IOException {
-                sender.setCompressionLevel(response.compressionLevel);
             }
         });
         receiver.registerHandler(DrawPacket.class, new XpraReceiver.PacketHandler<DrawPacket>() {
@@ -240,6 +255,13 @@ public abstract class XpraClient {
         this.sender = sender;
         final HelloRequest hello = new HelloRequest(desktopWidth, desktopHeight, keyboard, encoding, pictureEncodings);
         hello.setDpi(dpi, xdpi, ydpi);
+        if (username != null && !username.isEmpty()) {
+            hello.setUsername(username);
+        }
+        if (clipboard != null) {
+            clipboard.setSender(sender);
+            hello.setClipboard(ClipboardSync.getCaps());
+        }
         sender.send(hello);
     }
 
@@ -249,11 +271,37 @@ public abstract class XpraClient {
         }
         windows.clear();
         disconnectedByServer = false;
+        disconnectReason = null;
+        handshakeComplete = false;
         sender = null;
+        if (clipboard != null) {
+            clipboard.setSender(null);
+        }
     }
 
     public void onConnectionError(IOException e) {
         LOGGER.error("connection error", e);
+    }
+
+    /**
+     * Shares the clipboard with the server, from the next connection.
+     *
+     * @return where to report the changes of the local clipboard
+     */
+    public ClipboardSync enableClipboard(ClipboardSync.LocalClipboard local) {
+        clipboard = new ClipboardSync(local);
+        return clipboard;
+    }
+
+    /**
+     * Stops sharing the clipboard, from the next connection.
+     */
+    public void disableClipboard() {
+        clipboard = null;
+    }
+
+    public ClipboardSync getClipboard() {
+        return clipboard;
     }
 
     public XpraSender getSender() {
@@ -268,16 +316,40 @@ public abstract class XpraClient {
         return windows.values();
     }
 
+    /**
+     * Sets the size of the server's virtual screen, and resizes it if connected already.
+     */
     public void setDesktopSize(int width, int height) {
+        if (width == desktopWidth && height == desktopHeight) {
+            return;
+        }
         this.desktopWidth = width;
         this.desktopHeight = height;
-        if (sender != null) {
-            sender.send(new DesktopSize(width, height));
+        if (sender != null && handshakeComplete) {
+            sender.send(new ConfigureDisplay(width, height));
         }
     }
 
     public boolean isDisconnectedByServer() {
         return disconnectedByServer;
+    }
+
+    public String getDisconnectReason() {
+        return disconnectReason;
+    }
+
+    /**
+     * @return true, once the Server accepted the connection by sending its hello packet
+     */
+    public boolean isHandshakeComplete() {
+        return handshakeComplete;
+    }
+
+    /**
+     * Sets the user name sent to the Server, which defaults to the local user name.
+     */
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public void setPictureEncoding(PictureEncoding pictureEncoding) {
@@ -291,13 +363,11 @@ public abstract class XpraClient {
 
     private class HelloHandler implements XpraReceiver.PacketHandler<HelloResponse> {
 
-        private final SetDeflate setDeflate = new SetDeflate(3);
-
         @Override
         public void process(HelloResponse response) throws IOException {
+            LOGGER.info("Connected to Xpra server version " + response.getVersion());
+            handshakeComplete = true;
             LOGGER.debug(response.toString());
-            sender.useRencode(response.isRencode());
-            sender.send(setDeflate);
         }
     }
 

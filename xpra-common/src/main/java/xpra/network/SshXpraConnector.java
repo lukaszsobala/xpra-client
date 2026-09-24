@@ -18,8 +18,10 @@
 
 package xpra.network;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -42,6 +44,10 @@ import com.jcraft.jsch.UserInfo;
 public class SshXpraConnector extends XpraConnector implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(SshXpraConnector.class);
 
+    private static final String[] REMOTE_XPRA = {
+        "xpra", "$XDG_RUNTIME_DIR/xpra/run-xpra", "/usr/local/bin/xpra", "~/.xpra/run-xpra"
+    };
+
     private final JSch jsch = new JSch();
 
     private final UserInfo userInfo;
@@ -49,7 +55,10 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
     private final String host;
     private final int port;
 
-    private int display = 100;
+    /**
+     * The display to connect to, or -1 to let the server pick its only session.
+     */
+    private int display = -1;
 
     private Thread thread;
     private Session session;
@@ -126,30 +135,30 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
 
     @Override
     public void run() {
+        // the remote xpra command reports its errors on stderr:
+        final ByteArrayOutputStream stderr = new ByteArrayOutputStream();
         try {
             session.setServerAliveInterval(1000);
             session.setServerAliveCountMax(15);
             logger.debug("Keep-alive interval={}, maxAliveCount={}", session.getServerAliveInterval(), session.getServerAliveCountMax());
             session.connect();
             final Channel channel = session.openChannel("exec");
-            ((ChannelExec) channel).setCommand("~/.xpra/run-xpra _proxy :" + display);
+            ((ChannelExec) channel).setCommand(getProxyCommand(display));
+            ((ChannelExec) channel).setErrStream(stderr, true);
             channel.connect();
 
             final InputStream in = channel.getInputStream();
             client.onConnect(new xpra.protocol.XpraSender(channel.getOutputStream()));
-            fireOnConnectedEvent();
             PacketReader reader = new PacketReader(in);
             logger.info("Start Xpra connection...");
-            while (!Thread.interrupted() && !client.isDisconnectedByServer()) {
-                List<Object> dp = reader.readList();
-                onPacketReceived(dp);
-            }
+            readPackets(reader);
         } catch (JSchException e) {
             client.onConnectionError(new IOException(e));
             fireOnConnectionErrorEvent(new IOException(e));
         } catch (IOException e) {
-            client.onConnectionError(e);
-            fireOnConnectionErrorEvent(e);
+            final IOException error = withRemoteError(e, stderr);
+            client.onConnectionError(error);
+            fireOnConnectionErrorEvent(error);
         } finally {
             logger.info("Finnished Xpra connection!");
             if (client.getSender() != null) try {
@@ -164,12 +173,86 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
         }
     }
 
+    /**
+     * Processes packets until the connection is closed. The connection is considered
+     * established once the Server accepted our hello, so if the Server disconnects before
+     * that, its reason is reported as a connection error.
+     */
+    private void readPackets(PacketReader reader) throws IOException {
+        boolean connected = false;
+        while (!Thread.interrupted() && !client.isDisconnectedByServer()) {
+            List<Object> dp = reader.readList();
+            onPacketReceived(dp);
+            if (!connected && client.isHandshakeComplete()) {
+                connected = true;
+                fireOnConnectedEvent();
+            }
+        }
+        if (!connected) {
+            final String reason = client.getDisconnectReason();
+            throw new IOException(reason != null ? "The server refused the connection: " + reason
+                : "The connection was closed during the handshake");
+        }
+    }
+
     public JSch getJsch() {
         return jsch;
     }
 
     public void setDisplay(int displayId) {
         this.display = displayId;
+    }
+
+    /**
+     * Adds the error printed by the remote command, if the connection failed before the handshake completed.
+     */
+    private IOException withRemoteError(IOException e, ByteArrayOutputStream stderr) {
+        if (client.isHandshakeComplete()) {
+            return e;
+        }
+        try {
+            // give the SSH session a moment to deliver the rest of stderr
+            Thread.sleep(200);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
+        final String output;
+        synchronized (stderr) {
+            output = new String(stderr.toByteArray(), StandardCharsets.UTF_8).trim();
+        }
+        if (output.isEmpty()) {
+            return e;
+        }
+        // the last lines are the most relevant ones:
+        final String[] lines = output.split("\\r?\\n");
+        final StringBuilder message = new StringBuilder();
+        for (int i = Math.max(0, lines.length - 3); i < lines.length; ++i) {
+            if (message.length() > 0) {
+                message.append('\n');
+            }
+            message.append(lines[i].trim());
+        }
+        return new IOException(message.toString(), e);
+    }
+
+    /**
+     * Builds the remote command that connects the SSH channel to an Xpra session, trying the usual
+     * locations of the xpra command like Xpra's own client does (see {@code xpra/net/ssh/exec_client.py}).
+     */
+    static String getProxyCommand(int display) {
+        final String args = display >= 0 ? " _proxy :" + display : " _proxy";
+        final StringBuilder cmd = new StringBuilder();
+        for (String xpra : REMOTE_XPRA) {
+            cmd.append(cmd.length() == 0 ? "if " : "elif ");
+            if ("xpra".equals(xpra)) {
+                cmd.append("command -v xpra > /dev/null 2>&1");
+            } else {
+                cmd.append("[ -x ").append(xpra).append(" ]");
+            }
+            cmd.append("; then ").append(xpra).append(args).append("; ");
+        }
+        cmd.append("else echo \"no xpra command found\"; exit 1; fi");
+        return "sh -c '" + cmd + "'";
     }
 
 }

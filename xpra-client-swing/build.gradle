@@ -19,15 +19,19 @@
 apply plugin: 'java'
 apply plugin:'application'
 
-mainClassName = "xpra.swing.Launcher"
+application {
+    mainClass = "xpra.swing.Launcher"
+}
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
 
 dependencies {
     implementation project(':xpra-common')
 
-    implementation 'org.slf4j:slf4j-simple:1.7.12'
+    implementation 'org.slf4j:slf4j-simple:1.7.36'
 
-    testImplementation 'junit:junit:4.13'
+    testImplementation 'junit:junit:4.13.2'
 }

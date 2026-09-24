@@ -21,9 +21,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.view.*
-import com.github.jksiezni.xpra.client.AndroidXpraKeyboard
 import com.github.jksiezni.xpra.client.AndroidXpraWindow
 import timber.log.Timber
+import kotlin.math.abs
 import kotlin.math.max
 
 /**
@@ -40,8 +40,9 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
                 window.show(surface, width, height)
             }
 
-            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture?, width: Int, height: Int) {
+            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
                 Timber.v("onSurfaceTextureSizeChanged(): windowId=${window.id}, ${width}x${height}")
+                window.resize(width, height)
             }
 
             override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
@@ -49,11 +50,89 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
                 return false
             }
 
-            override fun onSurfaceTextureUpdated(surface: SurfaceTexture?) {
+            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
                 // do nothing
             }
         }
         setOnTouchListener(TouchHandler())
+    }
+
+    private val mouse = MouseHandler()
+
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean =
+        mouse.onGenericMotion(event) || super.onGenericMotionEvent(event)
+
+    override fun onHoverEvent(event: MotionEvent): Boolean =
+        mouse.onGenericMotion(event) || super.onHoverEvent(event)
+
+    /**
+     * Handles a real mouse (or a laptop's touchpad) connected to the device: moving it moves the
+     * pointer, even without a button down, and its buttons and wheel are sent as they are.
+     */
+    inner class MouseHandler {
+        /** the scrolling not sent yet, as the wheel only clicks in whole steps */
+        private var pendingScrollX = 0f
+        private var pendingScrollY = 0f
+
+        fun onGenericMotion(event: MotionEvent): Boolean {
+            if (!event.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) {
+                return false
+            }
+            event.offsetLocation(x, y)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_HOVER_MOVE, MotionEvent.ACTION_HOVER_ENTER -> window.movePointer(wx(event), wy(event))
+                MotionEvent.ACTION_SCROLL -> {
+                    window.movePointer(wx(event), wy(event))
+                    pendingScrollY += event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+                    pendingScrollX += event.getAxisValue(MotionEvent.AXIS_HSCROLL)
+                    while (pendingScrollY >= 1f) { click(4, event); pendingScrollY -= 1f }
+                    while (pendingScrollY <= -1f) { click(5, event); pendingScrollY += 1f }
+                    while (pendingScrollX >= 1f) { click(7, event); pendingScrollX -= 1f }
+                    while (pendingScrollX <= -1f) { click(6, event); pendingScrollX += 1f }
+                }
+                else -> return false
+            }
+            return true
+        }
+
+        /**
+         * @return true if the event came from a mouse, and was handled
+         */
+        fun onTouch(event: MotionEvent): Boolean {
+            if (!event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+                return false
+            }
+            when (event.actionMasked) {
+                MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.ACTION_BUTTON_RELEASE -> {
+                    val button = xButton(event.actionButton)
+                    if (button > 0) {
+                        window.movePointer(wx(event), wy(event))
+                        window.mouseAction(button, event.actionMasked == MotionEvent.ACTION_BUTTON_PRESS, wx(event), wy(event))
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> window.movePointer(wx(event), wy(event))
+                // the buttons are sent by ACTION_BUTTON_PRESS and ACTION_BUTTON_RELEASE
+            }
+            return true
+        }
+
+        private fun click(button: Int, event: MotionEvent) {
+            window.mouseAction(button, true, wx(event), wy(event))
+            window.mouseAction(button, false, wx(event), wy(event))
+        }
+
+        private fun xButton(androidButton: Int) = when (androidButton) {
+            MotionEvent.BUTTON_PRIMARY -> 1
+            MotionEvent.BUTTON_TERTIARY -> 2
+            MotionEvent.BUTTON_SECONDARY -> 3
+            MotionEvent.BUTTON_BACK -> 8
+            MotionEvent.BUTTON_FORWARD -> 9
+            else -> 0
+        }
+
+        private fun wx(event: MotionEvent) = (max(event.x, 0f) / window.scale).toInt()
+
+        private fun wy(event: MotionEvent) = (max(event.y, 0f) / window.scale).toInt()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -82,39 +161,144 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
         return params
     }
 
+    /**
+     * Turns touches into mouse events:
+     * - a tap is a left click, and dragging a finger drags with the left button held down,
+     * - a long press is a right click,
+     * - dragging two fingers scrolls, like a mouse wheel.
+     */
     inner class TouchHandler : OnTouchListener {
-        @SuppressLint("ClickableViewAccessibility")
-        override fun onTouch(v: View?, event: MotionEvent): Boolean {
-            event.offsetLocation(x, y)
-            val scale = window.scale
-            val x = (max(event.x, 0f) / scale).toInt()
-            val y = (max(event.y, 0f) / scale).toInt()
-            when (event.action) {
-                MotionEvent.ACTION_DOWN ->
-                    window.mouseAction(1, true, x, y)
-                MotionEvent.ACTION_MOVE -> window.mouseAction(1, true, x, y)
-                MotionEvent.ACTION_UP -> window.mouseAction(1, false, x, y)
-            }
-            return true
-        }
-    }
 
-    inner class KeyHandler : OnKeyListener {
-        override fun onKey(v: View?, keyCode: Int, event: KeyEvent): Boolean {
-            Timber.v("onKey(%d, %s)", keyCode, event)
-            if (event.isSystem) {
-                Timber.v("isSystem event")
-                return false
+        private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+        private val scrollStep = SCROLL_STEP_DP * resources.displayMetrics.density
+
+        /** where the finger went down, in view coordinates */
+        private var downX = 0f
+        private var downY = 0f
+        private var state = State.IDLE
+        private var scrollX = 0f
+        private var scrollY = 0f
+
+        private val longPress = Runnable {
+            if (state == State.PENDING) {
+                state = State.DONE
+                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                click(3, downX, downY)
             }
-            Timber.v("char=%d", event.unicodeChar)
-            when (event.action) {
-                KeyEvent.ACTION_DOWN -> window.keyboardAction(keyCode, AndroidXpraKeyboard.getUnicodeName(keyCode), true)
-                KeyEvent.ACTION_UP -> window.keyboardAction(keyCode, AndroidXpraKeyboard.getUnicodeName(keyCode), false)
-                else -> {
+        }
+
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouch(v: View, event: MotionEvent): Boolean {
+            event.offsetLocation(x, y)
+            if (mouse.onTouch(event)) {
+                return true
+            }
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    downY = event.y
+                    state = State.PENDING
+                    window.movePointer(toWindowX(downX), toWindowY(downY))
+                    postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
+                }
+                MotionEvent.ACTION_POINTER_DOWN -> {
+                    if (event.pointerCount == 2) {
+                        removeCallbacks(longPress)
+                        if (state == State.DRAGGING) {
+                            button(1, false, event.x, event.y)
+                        }
+                        state = State.SCROLLING
+                        scrollX = averageX(event)
+                        scrollY = averageY(event)
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> when (state) {
+                    State.PENDING -> if (abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop) {
+                        removeCallbacks(longPress)
+                        state = State.DRAGGING
+                        button(1, true, downX, downY)
+                        window.movePointer(toWindowX(event.x), toWindowY(event.y))
+                    }
+                    State.DRAGGING -> window.movePointer(toWindowX(event.x), toWindowY(event.y))
+                    State.SCROLLING -> if (event.pointerCount >= 2) scroll(averageX(event), averageY(event))
+                    else -> {}
+                }
+                MotionEvent.ACTION_UP -> {
+                    removeCallbacks(longPress)
+                    when (state) {
+                        State.PENDING -> click(1, downX, downY)
+                        State.DRAGGING -> button(1, false, event.x, event.y)
+                        else -> {}
+                    }
+                    state = State.IDLE
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    removeCallbacks(longPress)
+                    if (state == State.DRAGGING) {
+                        button(1, false, event.x, event.y)
+                    }
+                    state = State.IDLE
                 }
             }
             return true
         }
+
+        /**
+         * Sends a wheel click for each step the fingers moved: moving them up scrolls down,
+         * as the content follows the fingers.
+         */
+        private fun scroll(x: Float, y: Float) {
+            while (y - scrollY >= scrollStep) {
+                click(4, x, y)
+                scrollY += scrollStep
+            }
+            while (scrollY - y >= scrollStep) {
+                click(5, x, y)
+                scrollY -= scrollStep
+            }
+            while (x - scrollX >= scrollStep) {
+                click(6, x, y)
+                scrollX += scrollStep
+            }
+            while (scrollX - x >= scrollStep) {
+                click(7, x, y)
+                scrollX -= scrollStep
+            }
+        }
+
+        private fun click(button: Int, x: Float, y: Float) {
+            button(button, true, x, y)
+            button(button, false, x, y)
+        }
+
+        private fun button(button: Int, pressed: Boolean, x: Float, y: Float) {
+            val wx = toWindowX(x)
+            val wy = toWindowY(y)
+            window.movePointer(wx, wy)
+            window.mouseAction(button, pressed, wx, wy)
+        }
+
+        private fun toWindowX(x: Float) = (max(x, 0f) / window.scale).toInt()
+
+        private fun toWindowY(y: Float) = (max(y, 0f) / window.scale).toInt()
+
+        private fun averageX(event: MotionEvent) = (event.getX(0) + event.getX(1)) / 2
+
+        private fun averageY(event: MotionEvent) = (event.getY(0) + event.getY(1)) / 2
     }
 
+    private enum class State {
+        IDLE,
+        /** a finger is down, and it is not yet known whether it will tap, long press or drag */
+        PENDING,
+        DRAGGING,
+        SCROLLING,
+        /** the gesture was handled already (ie: a long press), ignore the rest of it */
+        DONE,
+    }
+
+    private companion object {
+        /** how far two fingers move for each mouse wheel click */
+        const val SCROLL_STEP_DP = 24f
+    }
 }

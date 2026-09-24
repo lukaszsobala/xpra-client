@@ -16,12 +16,32 @@
  *     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package xpra.compression;
+package xpra.protocol.packets;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
- *
+ * Asks the server to send the whole contents of a window again.
  */
-public interface Decompressor {
+public class BufferRefresh extends WindowPacket {
 
-    boolean decompress(byte[] inputData, byte[] outputData) throws CompressionException;
+    private static final int QUALITY = 100;
+
+    public BufferRefresh(int windowId) {
+        super("buffer-refresh", windowId);
+    }
+
+    @Override
+    protected void serialize(Collection<Object> elems) {
+        super.serialize(elems);
+        final Map<String, Object> options = new LinkedHashMap<>();
+        options.put("refresh-now", true);
+        elems.add(0);
+        elems.add(QUALITY);
+        elems.add(options);
+        elems.add(Collections.emptyMap());
+    }
 }

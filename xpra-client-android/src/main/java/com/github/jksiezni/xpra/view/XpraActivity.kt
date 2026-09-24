@@ -17,13 +17,21 @@
  */
 package com.github.jksiezni.xpra.view
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.WindowInsetsCompat
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.client.*
 import com.github.jksiezni.xpra.client.AndroidXpraWindow.XpraWindowListener
@@ -32,6 +40,7 @@ import com.github.jksiezni.xpra.view.Intents.isValidXpraActivityIntent
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActivityXpraBinding
 import timber.log.Timber
+import xpra.client.KeyboardInput
 import java.io.IOException
 
 class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener, ConnectionEventListener {
@@ -48,12 +57,18 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         serviceBinderFragment = ServiceBinderFragment.obtain(this)
         binding = ActivityXpraBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setupEdgeToEdge(this, binding.root, binding.toolbar) { imeVisible ->
+            binding.extraKeys.visibility = if (imeVisible) View.VISIBLE else View.GONE
+        }
         if (!isValidXpraActivityIntent(intent)) {
             finish()
             return
         }
         windowId = getWindowId(intent)
         setSupportActionBar(binding.toolbar)
+        setupLandscape()
+        binding.workspaceView.touchpadMode = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(PREF_TOUCHPAD_MODE, false)
 
         serviceBinderFragment.whenXpraAvailable { api ->
             val rootWindow = api.xpraClient.getWindow(windowId)
@@ -66,9 +81,41 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             api.registerConnectionListener(this)
             api.xpraClient.addEventListener(this)
             rootWindow.addWindowListener(this)
+            // the activity is created again when the device rotates:
+            api.xpraClient.updateDesktopSize(resources.displayMetrics)
             restoreProxyViewHierarchy(rootWindow)
+            val keyboardInput = KeyboardInput(rootWindow)
+            binding.workspaceView.keyboardInput = keyboardInput
+            binding.extraKeys.keyboardInput = keyboardInput
+            binding.workspaceView.requestFocus()
             setResult(RESULT_OK)
         }
+    }
+
+    /**
+     * Landscape screens are short: go full screen, with the system bars shown by a swipe from
+     * the edge, and hide the toolbar behind a small handle.
+     */
+    private fun setupLandscape() {
+        if (resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            return
+        }
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+        binding.toolbarHandle.visibility = View.VISIBLE
+        setToolbarShown(false)
+        binding.toolbarHandle.setOnClickListener {
+            setToolbarShown(binding.toolbar.visibility != View.VISIBLE)
+        }
+    }
+
+    private fun setToolbarShown(shown: Boolean) {
+        binding.toolbar.visibility = if (shown) View.VISIBLE else View.GONE
+        binding.toolbarHandle.setIconResource(
+            if (shown) R.drawable.ic_baseline_expand_less_24 else R.drawable.ic_baseline_expand_more_24)
+        binding.toolbarHandle.contentDescription = getString(if (shown) R.string.hide_toolbar else R.string.show_toolbar)
     }
 
     private fun restoreProxyViewHierarchy(rootWindow: AndroidXpraWindow) {
@@ -76,7 +123,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         val list = mutableListOf<AndroidXpraWindow>()
         list.addAll(rootWindow.children)
         while (list.isNotEmpty()) {
-            val child = list.removeFirst()
+            val child = list.removeAt(0)
             val proxyView = ProxyView(this, child)
             binding.workspaceView.addView(proxyView)
             child.addWindowListener(XpraWindowHandler(proxyView))
@@ -94,6 +141,33 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         }
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            // ie: back from the app where some text was copied
+            sendClipboard()
+        }
+    }
+
+    private val clipChangedListener = ClipboardManager.OnPrimaryClipChangedListener { sendClipboard() }
+
+    override fun onResume() {
+        super.onResume()
+        serviceBinderFragment.whenXpraAvailable { api -> api.xpraClient.activeWindowId = windowId }
+        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).addPrimaryClipChangedListener(clipChangedListener)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).removePrimaryClipChangedListener(clipChangedListener)
+    }
+
+    private fun sendClipboard() {
+        serviceBinderFragment.whenXpraAvailable { api ->
+            AndroidClipboard.sendToServer(this, api.xpraClient.clipboard)
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         Timber.i("onNewIntent(): %s", getIntent())
@@ -102,11 +176,41 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.xpra_menu, menu)
+        updateTouchpadItem(menu.findItem(R.id.action_touchpad))
         return true
+    }
+
+    /**
+     * Shows the mode the button switches to.
+     */
+    private fun updateTouchpadItem(item: MenuItem?) {
+        item ?: return
+        if (binding.workspaceView.touchpadMode) {
+            item.setIcon(R.drawable.ic_baseline_touch_app_24)
+            item.setTitle(R.string.direct_touch_mode)
+        } else {
+            item.setIcon(R.drawable.ic_baseline_mouse_24)
+            item.setTitle(R.string.touchpad_mode)
+        }
+    }
+
+    private fun toggleTouchpadMode(item: MenuItem) {
+        val touchpad = !binding.workspaceView.touchpadMode
+        binding.workspaceView.touchpadMode = touchpad
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(PREF_TOUCHPAD_MODE, touchpad)
+            .apply()
+        updateTouchpadItem(item)
+        Toast.makeText(this, if (touchpad) R.string.touchpad_mode_on else R.string.direct_touch_mode_on,
+            Toast.LENGTH_SHORT).show()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_touchpad -> {
+                toggleTouchpadMode(item)
+                true
+            }
             R.id.action_keyboard -> {
                 toggleKeyboard(binding.workspaceView)
                 true
@@ -125,14 +229,15 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     private fun toggleKeyboard(view: View?) {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         if (view != null) {
-            if (!imm.isActive(view)) {
+            val imeVisible = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            if (!imm.isActive(view) || !imeVisible) {
                 view.isFocusable = true
                 view.isFocusableInTouchMode = true
                 if (view.requestFocus()) {
                     imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
                 }
             } else {
-                imm.toggleSoftInput(0, 0)
+                imm.hideSoftInputFromWindow(view.windowToken, 0)
             }
         }
     }
@@ -189,4 +294,9 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         }
     }
 
+
+    private companion object {
+        const val PREFS_NAME = "view_settings"
+        const val PREF_TOUCHPAD_MODE = "touchpad_mode"
+    }
 }

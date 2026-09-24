@@ -34,11 +34,25 @@ public class KeyAction extends WindowPacket {
   int group = 0; // added in xpra 2.1
 	
 	public KeyAction(int windowId, int keycode, String keyname, boolean pressed) {
+		this(windowId, keycode, keyname, pressed, null, null);
+	}
+
+	/**
+	 * @param modifiers the modifiers held down, ie: "shift" or "control"
+	 * @param string the text produced by the key, if any
+	 */
+	public KeyAction(int windowId, int keycode, String keyname, boolean pressed, List<String> modifiers, String string) {
 		super("key-action", windowId);
 		this.keyval = 0;
 		this.keycode = keycode;
 		this.keyname = keyname;
 		this.pressed = pressed;
+		if (modifiers != null) {
+			this.modifiers.addAll(modifiers);
+		}
+		if (string != null) {
+			this.name = string;
+		}
 	}
 	
 	@Override

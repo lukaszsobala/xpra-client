@@ -18,62 +18,74 @@
 
 package com.github.jksiezni.xpra.client;
 
+import android.view.KeyEvent;
+import android.util.SparseArray;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 import xpra.client.XpraKeyboard;
 
-import android.util.SparseArray;
-import android.view.KeyCharacterMap;
-import android.view.KeyEvent;
-
-
+/**
+ * Keys are sent by their X11 names (see {@link xpra.client.KeyboardInput}), which servers resolve
+ * against a US keyboard layout, so no keycodes are sent.
+ */
 public class AndroidXpraKeyboard implements XpraKeyboard {
 
-    private static final SparseArray<String> keymap = new SparseArray<>();
+    /**
+     * The X11 keysym names of the Android keys that do not produce text.
+     */
+    private static final SparseArray<String> SPECIAL_KEYS = new SparseArray<>();
 
     static {
-        final KeyCharacterMap characterMap = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD);
-        for (int i = KeyEvent.KEYCODE_0; i <= KeyEvent.KEYCODE_9; ++i) {
-            mapKeycode(i, characterMap);
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_DEL, "BackSpace");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_FORWARD_DEL, "Delete");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_ENTER, "Return");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_NUMPAD_ENTER, "KP_Enter");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_TAB, "Tab");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_SPACE, "space");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_ESCAPE, "Escape");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_DPAD_LEFT, "Left");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_DPAD_RIGHT, "Right");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_DPAD_UP, "Up");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_DPAD_DOWN, "Down");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_MOVE_HOME, "Home");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_MOVE_END, "End");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_PAGE_UP, "Prior");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_PAGE_DOWN, "Next");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_INSERT, "Insert");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_SHIFT_LEFT, "Shift_L");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_SHIFT_RIGHT, "Shift_R");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_CTRL_LEFT, "Control_L");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_CTRL_RIGHT, "Control_R");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_ALT_LEFT, "Alt_L");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_ALT_RIGHT, "Alt_R");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_META_LEFT, "Super_L");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_META_RIGHT, "Super_R");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_CAPS_LOCK, "Caps_Lock");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_SYSRQ, "Print");
+        SPECIAL_KEYS.put(KeyEvent.KEYCODE_BREAK, "Pause");
+        for (int i = 0; i < 12; ++i) {
+            SPECIAL_KEYS.put(KeyEvent.KEYCODE_F1 + i, "F" + (i + 1));
         }
-        for (int i = KeyEvent.KEYCODE_A; i <= KeyEvent.KEYCODE_Z; ++i) {
-            mapKeycode(i, characterMap);
-        }
-        keymap.put(KeyEvent.KEYCODE_DEL, "BackSpace");
-        keymap.put(KeyEvent.KEYCODE_ENTER, "Return");
     }
 
-    private static void mapKeycode(int keyCode, KeyCharacterMap characterMap) {
-        int c = characterMap.get(keyCode, 0);
-        keymap.put(keyCode, String.format("U%s", Integer.toHexString(c).toUpperCase(Locale.US)));
-    }
-
-    public static String getUnicodeName(int keycode) {
-        return keymap.get(keycode);
-    }
-
-    /* (non-Javadoc)
-     * @see xpra.client.XpraKeyboard#getLocale()
+    /**
+     * @return the X11 keysym name of an Android key that does not produce text, or null
      */
+    public static String getSpecialKeysym(int keyCode) {
+        return SPECIAL_KEYS.get(keyCode);
+    }
+
     @Override
     public Locale getLocale() {
-        return Locale.getDefault();
+        // matches the characters to keys mapping of KeyboardInput
+        return Locale.US;
     }
 
-    /* (non-Javadoc)
-     * @see xpra.client.XpraKeyboard#getKeycodes()
-     */
     @Override
     public List<KeyDesc> getKeycodes() {
-        List<KeyDesc> keys = new ArrayList<>();
-        for (int i = 0; i < keymap.size(); ++i) {
-            int key = keymap.keyAt(i);
-            String val = keymap.valueAt(i);
-            keys.add(new KeyDesc(key, val));
-        }
-        return keys;
+        return new ArrayList<>();
     }
-
 }

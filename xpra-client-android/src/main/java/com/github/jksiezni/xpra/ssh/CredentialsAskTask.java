@@ -31,7 +31,7 @@ import android.widget.TextView;
 
 import com.github.jksiezni.xpra.R;
 
-import androidx.appcompat.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 final class CredentialsAskTask extends UiTask<Void, Boolean> {
 
@@ -39,6 +39,9 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
     private final String[] prompt;
     private final boolean[] echo;
     private final String[] answers;
+    /** whether to offer remembering the password, and the initial state of that choice */
+    private final boolean rememberable;
+    private volatile boolean remember;
 
     private PasswordDialogBuilder dialog;
 
@@ -48,10 +51,23 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
     }
 
     public CredentialsAskTask(Context context, String[] prompt, boolean[] echo) {
+        this(context, prompt, echo, false, false);
+    }
+
+    /**
+     * Asks for a password, with a "Remember password" choice.
+     */
+    public CredentialsAskTask(Context context, String passwordPrompt, boolean remember) {
+        this(context, new String[]{passwordPrompt}, new boolean[]{false}, true, remember);
+    }
+
+    private CredentialsAskTask(Context context, String[] prompt, boolean[] echo, boolean rememberable, boolean remember) {
         this.context = context;
         this.prompt = prompt;
         this.echo = echo;
         this.answers = new String[prompt.length];
+        this.rememberable = rememberable;
+        this.remember = remember;
     }
 
     @Override
@@ -68,8 +84,15 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
         return dialog != null ? dialog.getAnswers() : null;
     }
 
+    /**
+     * @return true if the user chose to remember the password
+     */
+    public boolean isRemember() {
+        return remember;
+    }
 
-    class PasswordDialogBuilder extends AlertDialog.Builder {
+
+    class PasswordDialogBuilder extends MaterialAlertDialogBuilder {
 
         private LinearLayout layout;
 
@@ -136,6 +159,13 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
                 }
             });
             layout.addView(checkbox);
+            if (rememberable) {
+                final CheckBox rememberBox = new CheckBox(context);
+                rememberBox.setText(R.string.remember_password);
+                rememberBox.setChecked(remember);
+                rememberBox.setOnCheckedChangeListener((button, checked) -> remember = checked);
+                layout.addView(rememberBox);
+            }
         }
 
         protected void showPasswords(boolean show) {

@@ -31,8 +31,8 @@ import static org.junit.Assert.fail;
 
 public class HeaderChunkTest {
 
-    private static final byte FLAGS = HeaderChunk.FLAG_RENCODE;
-    private static final byte COMPRESSION_LVL = 1;
+    private static final byte FLAGS = HeaderChunk.FLAG_RENCODEPLUS;
+    private static final byte COMPRESSION_LVL = HeaderChunk.COMPRESSOR_LZ4 | 1;
     private static final byte PACKET_INDEX = 2;
 
     private static final byte[] HEADER = {'P', FLAGS, COMPRESSION_LVL, PACKET_INDEX, 0, 0, 0, 3};
@@ -64,6 +64,30 @@ public class HeaderChunkTest {
         try {
             headerChunk.readHeader(new ByteArrayInputStream(new byte[8]));
             fail("Header should start with a magic byte");
+        } catch (IOException e) {
+            // everything is OK
+        }
+    }
+
+    @Test
+    public void testInvalidHeader_unsupportedCompressor() {
+        try {
+            byte[] header = HEADER.clone();
+            header[2] = (byte) (HeaderChunk.COMPRESSOR_BROTLI | 1);
+            headerChunk.readHeader(new ByteArrayInputStream(header));
+            fail("Only lz4 compression is supported");
+        } catch (IOException e) {
+            // everything is OK
+        }
+    }
+
+    @Test
+    public void testInvalidHeader_legacyEncoder() {
+        try {
+            byte[] header = HEADER.clone();
+            header[1] = HeaderChunk.FLAG_RENCODE;
+            headerChunk.readHeader(new ByteArrayInputStream(header));
+            fail("Only rencodeplus packets are supported");
         } catch (IOException e) {
             // everything is OK
         }

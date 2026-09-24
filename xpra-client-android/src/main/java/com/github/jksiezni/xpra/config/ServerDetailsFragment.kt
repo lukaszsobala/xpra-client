@@ -20,7 +20,6 @@ package com.github.jksiezni.xpra.config
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.TextUtils
 import android.util.Patterns
 import android.view.Menu
 import android.view.MenuInflater
@@ -32,6 +31,7 @@ import androidx.preference.Preference
 import androidx.preference.Preference.SummaryProvider
 import androidx.preference.PreferenceFragmentCompat
 import com.github.jksiezni.xpra.R
+import com.github.jksiezni.xpra.ssh.PasswordVault
 import java.util.regex.Pattern
 
 class ServerDetailsFragment : PreferenceFragmentCompat() {
@@ -86,6 +86,22 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
             }
             startActivity(intent)
             true
+        }
+
+        findPreference<Preference>(PREF_FORGET_PASSWORDS)?.let { pref ->
+            val serverId = dataStore.serverDetails.id
+            val vault = PasswordVault(requireContext())
+            pref.isEnabled = vault.hasPasswords(serverId)
+            if (!pref.isEnabled) {
+                pref.summary = getString(R.string.no_saved_passwords)
+            }
+            pref.setOnPreferenceClickListener {
+                vault.forget(serverId)
+                pref.isEnabled = false
+                pref.summary = getString(R.string.no_saved_passwords)
+                Toast.makeText(activity, R.string.passwords_forgotten, Toast.LENGTH_SHORT).show()
+                true
+            }
         }
     }
 
@@ -145,6 +161,7 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
 
     companion object {
         private const val KEY_SERVER_DETAILS = "server_details"
+        private const val PREF_FORGET_PASSWORDS = "forget_passwords"
 
         private val HOSTNAME_PATTERN = Pattern.compile("^[0-9a-zA-Z_\\-.]*$")
 
@@ -161,10 +178,11 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
 
 class EditTextSummaryProvider(private val emptySummary: String) : SummaryProvider<EditTextPreference> {
     override fun provideSummary(preference: EditTextPreference): CharSequence {
-        return if (TextUtils.isEmpty(preference.text)) {
+        val text = preference.text
+        return if (text.isNullOrEmpty()) {
             emptySummary
         } else {
-            preference.text
+            text
         }
     }
 }
@@ -172,7 +190,7 @@ class EditTextSummaryProvider(private val emptySummary: String) : SummaryProvide
 class DisplayIdSummaryProvider(private val emptySummary: String) : SummaryProvider<EditTextPreference> {
     override fun provideSummary(preference: EditTextPreference): CharSequence {
         val text = preference.text
-        return if (TextUtils.isEmpty(text) || "-1" == text) {
+        return if (text.isNullOrEmpty() || "-1" == text) {
             emptySummary
         } else {
             text

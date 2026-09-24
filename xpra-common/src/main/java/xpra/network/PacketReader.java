@@ -18,75 +18,78 @@
 
 package xpra.network;
 
-import com.github.jksiezni.rencode.RencodeInputStream;
-
-import org.ardverk.coding.BencodingInputStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.Inflater;
+
+import xpra.compression.LZ4;
+import xpra.protocol.RencodePlus;
 
 /**
- *
+ * Reads Xpra packets: an 8-byte header followed by the payload, which is either the main
+ * rencodeplus-encoded packet (index 0), or a raw chunk (index &gt; 0) that replaces the item at that
+ * index in the next main packet (ie: the pixel data of a "draw" packet).
  */
-
 class PacketReader {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PacketReader.class);
+
+  /**
+   * Upper limit for a single payload, to avoid allocating huge buffers on a corrupted stream.
+   */
+  private static final int MAX_PACKET_SIZE = 256 * 1024 * 1024;
 
   private final InputStream in;
 
   private final HeaderChunk headerChunk = new HeaderChunk();
-  private final PatchChunk patchChunk = new PatchChunk();
 
   PacketReader(InputStream in) {
     this.in = in;
   }
 
   List<Object> readList() throws IOException {
-    final Map<Integer, byte[]> patches = new HashMap<>();
-    boolean packetReady = false;
-    while (!packetReady) {
-      // read header
+    final Map<Integer, byte[]> chunks = new HashMap<>();
+    while (true) {
       headerChunk.readHeader(in);
-      // if packetIndex > 0 then read patches
-      if(headerChunk.getPacketIndex() > 0) {
-        byte[] patch = patchChunk.readPatch(in, headerChunk.getPacketSize(), headerChunk.isDataCompressed());
-        patches.put(headerChunk.getPacketIndex(), patch);
-      } else {
-        // else decode to list
-        packetReady = true;
+      final byte[] payload = readPayload();
+      if (headerChunk.getPacketIndex() > 0) {
+        chunks.put(headerChunk.getPacketIndex(), payload);
+        continue;
       }
+      final Object decoded = RencodePlus.decode(payload);
+      if (!(decoded instanceof List)) {
+        throw new IOException("invalid packet, expected a list but got " + decoded);
+      }
+      @SuppressWarnings("unchecked")
+      final List<Object> list = (List<Object>) decoded;
+      for (Map.Entry<Integer, byte[]> entry : chunks.entrySet()) {
+        if (entry.getKey() >= list.size()) {
+          throw new IOException("invalid chunk index " + entry.getKey() + " for a packet of size " + list.size());
+        }
+        list.set(entry.getKey(), entry.getValue());
+      }
+      return list;
     }
-    InputStream input = in;
-    if(headerChunk.isDataCompressed()) {
-      input = new ChunkInflaterInputStream(in, new Inflater(), headerChunk.getPacketSize());
+  }
+
+  private byte[] readPayload() throws IOException {
+    final int size = headerChunk.getPacketSize();
+    if (size < 0 || size > MAX_PACKET_SIZE) {
+      throw new IOException("invalid packet size: " + (size & 0xFFFFFFFFL));
     }
-    List<Object> list;
-    if (headerChunk.hasFlags(HeaderChunk.FLAG_RENCODE)) {
-      list = readRencodedList(input);
-    } else {
-      list = readBencodedList(input);
+    final byte[] buffer = new byte[size];
+    int bytesRead = 0;
+    while (bytesRead < size) {
+      final int r = in.read(buffer, bytesRead, size - bytesRead);
+      if (r < 0) {
+        throw new EOFException("Unexpected end of stream");
+      }
+      bytesRead += r;
     }
     if (headerChunk.isDataCompressed()) {
-      // fixme remove this code
-      ((ChunkInflaterInputStream)input).drain();
+      return LZ4.decompress(buffer);
     }
-    for(Map.Entry<Integer, byte[]> entry : patches.entrySet()) {
-			list.set(entry.getKey(), entry.getValue());
-		}
-    return list;
-  }
-
-  private List<Object> readBencodedList(InputStream is) throws IOException {
-    return new BencodingInputStream(is).readList();
-  }
-
-  private List<Object> readRencodedList(InputStream is) throws IOException {
-    return new RencodeInputStream(is, false).readList();
+    return buffer;
   }
 }

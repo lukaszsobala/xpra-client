@@ -36,16 +36,39 @@ internal class GLDrawTarget(
     private var textureHeight: Int = 0
 
 
-    fun validateTextureSize(width: Int, height: Int) {
+    /**
+     * The texture holds the whole window, as it is stretched over the whole surface when rendered.
+     * Resizing it discards its contents, so it should match the window size, which the server sends
+     * with every update, rather than grow with the area of each update.
+     *
+     * @param windowSize the window size sent with the update, if known
+     * @param right the right edge of the update
+     * @param bottom the bottom edge of the update
+     * @return true if the texture was (re)created, so its previous contents are lost
+     */
+    fun validateTextureSize(windowSize: IntArray?, right: Int, bottom: Int): Boolean {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
-        if (width > textureWidth || height > textureHeight) {
+        var width = maxOf(textureWidth, right)
+        var height = maxOf(textureHeight, bottom)
+        if (windowSize != null && windowSize[0] > 0 && windowSize[1] > 0) {
+            width = maxOf(windowSize[0], right)
+            height = maxOf(windowSize[1], bottom)
+        }
+        if (width != textureWidth || height != textureHeight) {
             Timber.d("create texture ${width}x${height}")
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, width, height, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, null)
+            // OpenGL ES 2 requires updates to use the texture's format: Android bitmaps are RGBA,
+            // so the texture is RGBA too and "rgb" pixels are converted to RGBA before uploading
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
             GlUtil.checkGlError("glTexImage2D")
             textureWidth = width
             textureHeight = height
+            return true
         }
+        return false
     }
+
+    fun coversTexture(x: Int, y: Int, width: Int, height: Int): Boolean =
+        x <= 0 && y <= 0 && x + width >= textureWidth && y + height >= textureHeight
 
     fun makeCurrent() {
         eglSurface.makeCurrent()

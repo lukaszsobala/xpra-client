@@ -16,29 +16,25 @@
  *     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-apply plugin: 'java'
+apply plugin: 'java-library'
 apply plugin: 'kotlin'
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'com.github.jksiezni:bee-encode:0.3'
-    implementation 'com.github.jksiezni:rencode4j:1.2.0'
+    api 'org.slf4j:slf4j-api:1.7.36'
+    // Maintained fork of JSch (same com.jcraft.jsch API) supporting modern
+    // OpenSSH key and signature algorithms (ed25519, rsa-sha2-*)
+    api 'com.github.mwiede:jsch:0.2.25'
 
-    api 'org.slf4j:slf4j-api:1.7.25'
-    api 'com.jcraft:jsch:0.1.52'
-
-    testImplementation 'junit:junit:4.13.1'
-}
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = "1.7"
-    }
-}
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "1.7"
-    }
+    testImplementation 'junit:junit:4.13.2'
 }

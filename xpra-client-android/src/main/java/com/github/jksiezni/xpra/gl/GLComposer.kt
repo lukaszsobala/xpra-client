@@ -35,7 +35,13 @@ import java.nio.ByteBuffer
 /**
  *
  */
-class GLComposer(private val callback: ComposeCallback) : GLThread() {
+/**
+ * @param onContentLost called when the contents of a window were lost and must be sent again
+ */
+class GLComposer(
+    private val callback: ComposeCallback,
+    private val onContentLost: (windowId: Int) -> Unit
+) : GLThread() {
 
     private val drawTargets: MutableMap<Int, GLDrawTarget> = mutableMapOf()
 
@@ -130,8 +136,20 @@ class GLComposer(private val callback: ComposeCallback) : GLThread() {
             // process packet
             val startTime = SystemClock.uptimeMillis()
             glWindow.makeCurrent()
-            glWindow.validateTextureSize(packet.x + packet.w, packet.y + packet.h)
-            composeImage(glWindow.texture, packet)
+            if (glWindow.validateTextureSize(packet.windowSize, packet.x + packet.w, packet.y + packet.h)
+                && !glWindow.coversTexture(packet.x, packet.y, packet.w, packet.h)) {
+                // this update only redraws a part of the new texture, ask for the rest of the window
+                Timber.d("Requesting a refresh of window %d", packet.windowId)
+                onContentLost(packet.windowId)
+            }
+            try {
+                composeImage(glWindow.texture, packet)
+            } catch (e: Exception) {
+                // a negative decode time tells the server that this update failed
+                Timber.e(e, "Failed to draw %s", packet)
+                callback.onComposed(packet, -1)
+                return
+            }
             render(glWindow)
             callback.onComposed(packet, SystemClock.uptimeMillis() - startTime)
         } else {
@@ -151,29 +169,16 @@ class GLComposer(private val callback: ComposeCallback) : GLThread() {
     private fun composeImage(tex: Int, packet: DrawPacket) {
         when (packet.encoding) {
             PictureEncoding.png, PictureEncoding.pngL, PictureEncoding.pngP, PictureEncoding.jpeg -> {
-                val bitmap = BitmapFactory.decodeByteArray(packet.data, 0, packet.data.size)
+                val bitmap = BitmapFactory.decodeByteArray(packet.data, 0, packet.data.size, RGBA_BITMAP)
+                    ?: throw IllegalArgumentException("Failed to decode ${packet.encoding} image")
                 composeBitmap(tex, bitmap, packet.x, packet.y)
                 bitmap.recycle()
             }
-            PictureEncoding.rgb24 -> {
-                composeRGB(tex, packet.readPixels(), packet.x, packet.y, packet.w, packet.h)
-            }
-            PictureEncoding.rgb32 -> {
-                composeRGBA(tex, packet.readPixels(), packet.x, packet.y, packet.w, packet.h)
+            PictureEncoding.rgb24, PictureEncoding.rgb32 -> {
+                composeRGBA(tex, packet.readRgbaPixels(), packet.x, packet.y, packet.w, packet.h)
             }
             else -> Timber.e("Unable to draw: %s", packet.encoding)
         }
-    }
-
-    private fun composeRGB(tex: Int, pixels: ByteArray, x: Int, y: Int, width: Int, height: Int) {
-        val buffer = ByteBuffer.wrap(pixels)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
-        GlUtil.checkGlError("glBindTexture")
-        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1) // rgb24 data is 3-byte aligned, but GL allows only 1-byte align
-        GlUtil.checkGlError("glPixelStorei")
-        GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, x, y, width, height, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, buffer)
-        GlUtil.checkGlError("texSubImage2D")
-        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 4)
     }
 
     private fun composeRGBA(tex: Int, pixels: ByteArray, x: Int, y: Int, width: Int, height: Int) {
@@ -185,6 +190,7 @@ class GLComposer(private val callback: ComposeCallback) : GLThread() {
 
     private fun composeBitmap(tex: Int, bitmap: Bitmap, x: Int, y: Int) {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
+        // uploads as GL_RGBA, which must match the format of the texture
         GLUtils.texSubImage2D(GLES20.GL_TEXTURE_2D, 0, x, y, bitmap)
         GlUtil.checkGlError("texSubImage2D")
     }
@@ -194,6 +200,8 @@ class GLComposer(private val callback: ComposeCallback) : GLThread() {
     }
 
     companion object {
+        private val RGBA_BITMAP = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 }
+
         const val MSG_DRAW_PACKET = 1
         const val MSG_ADD_SURFACE_TEX = 2
         const val MSG_DEL_SURFACE_TEX = 3

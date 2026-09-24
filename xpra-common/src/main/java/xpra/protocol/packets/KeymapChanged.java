@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Jakub Ksiezniak
+ * Copyright (C) 2020 Jakub Ksiezniak
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -19,30 +19,29 @@
 package xpra.protocol.packets;
 
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-public class SetDeflate extends xpra.protocol.IOPacket {
+import xpra.protocol.IOPacket;
 
-	public int compressionLevel;
+/**
+ * Sends a new keyboard map to the server, which applies it to its X11 keyboard.
+ */
+public class KeymapChanged extends IOPacket {
 
-	public SetDeflate() {
-		super("set_deflate");
-	}
+    private final Map<String, Object> keymap;
 
-	public SetDeflate(int compressionLevel) {
-		super("set_deflate");
-		this.compressionLevel = compressionLevel;
-	}
+    public KeymapChanged(Map<String, Object> keymap) {
+        super("keymap-changed");
+        this.keymap = keymap;
+    }
 
-	@Override
-	public void serialize(Collection<Object> elems) {
-		elems.add(compressionLevel);
-	}
-
-	@Override
-	public void deserialize(Iterator<Object> iter) {
-		super.deserialize(iter);
-		compressionLevel = asInt(iter.next());
-	}
-
+    @Override
+    protected void serialize(Collection<Object> elems) {
+        final Map<String, Object> props = new LinkedHashMap<>();
+        props.put("keymap", keymap);
+        elems.add(props);
+        // apply it even if the server thinks it has not changed:
+        elems.add(true);
+    }
 }

@@ -18,6 +18,7 @@
 
 package com.github.jksiezni.xpra.config
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import xpra.protocol.PictureEncoding
@@ -46,9 +47,22 @@ class ServerDetails : Serializable {
 
     var pictureEncoding: PictureEncoding = PictureEncoding.jpeg
 
+    /**
+     * How many screen pixels are used for one pixel of the remote windows, in percent,
+     * or [SCALE_AUTOMATIC] to follow the screen density.
+     */
+    @ColumnInfo(defaultValue = "0")
+    var scalePercent: Int = SCALE_AUTOMATIC
+
+    /**
+     * Whether text copied on the device can be pasted on the server, and the other way round.
+     */
+    @ColumnInfo(defaultValue = "1")
+    var clipboardSharing: Boolean = true
+
     val url: String
         get() {
-            val builder = StringBuilder(type.toString().toLowerCase(Locale.getDefault()))
+            val builder = StringBuilder(type.toString().lowercase(Locale.getDefault()))
             builder.append("://")
             if (type == ConnectionType.SSH) {
                 builder.append(username)
@@ -72,10 +86,15 @@ class ServerDetails : Serializable {
                 name == that.name && type == that.type &&
                 host == that.host &&
                 username == that.username &&
-                sshPrivateKeyFile == that.sshPrivateKeyFile && pictureEncoding == that.pictureEncoding
+                sshPrivateKeyFile == that.sshPrivateKeyFile && pictureEncoding == that.pictureEncoding &&
+                scalePercent == that.scalePercent && clipboardSharing == that.clipboardSharing
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(id, name, type, host, port, displayId, username, sshPrivateKeyFile, pictureEncoding)
+        return Objects.hash(id, name, type, host, port, displayId, username, sshPrivateKeyFile, pictureEncoding, scalePercent, clipboardSharing)
+    }
+
+    companion object {
+        const val SCALE_AUTOMATIC = 0
     }
 }
