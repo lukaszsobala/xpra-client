@@ -137,6 +137,11 @@ public class AndroidXpraWindow extends XpraWindow {
     }
 
     @Nullable
+    public Bitmap getIcon() {
+        return icon;
+    }
+
+    @Nullable
     public Drawable getIconDrawable() {
         if (icon == null) {
             return null;

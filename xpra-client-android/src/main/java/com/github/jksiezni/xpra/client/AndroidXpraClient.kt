@@ -18,23 +18,31 @@
 package com.github.jksiezni.xpra.client
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.DisplayMetrics
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.gl.GLComposer
 import timber.log.Timber
+import xpra.client.ServerApp
 import xpra.client.XpraClient
 import xpra.client.XpraWindow
 import xpra.protocol.PictureEncoding
 import xpra.protocol.packets.DrawPacket
 import xpra.protocol.packets.NewWindow
 import xpra.protocol.packets.NewWindowOverrideRedirect
+import java.util.concurrent.CopyOnWriteArrayList
 
 class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE_ENCODINGS, AndroidXpraKeyboard()) {
 
     private val windowsLiveData = MutableLiveData<Collection<XpraWindow>>()
-    private val listeners: MutableList<XpraEventListener> = mutableListOf()
+    private val listeners: MutableList<XpraEventListener> = CopyOnWriteArrayList()
+    private val serverAppsLiveData = MutableLiveData<List<ServerApp>>(emptyList())
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val startupActions = mutableListOf<Runnable>()
 
     private val composer = GLComposer(this::onDrawFinished) { windowId -> getWindow(windowId)?.requestRefresh() }
 
@@ -115,6 +123,46 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
 
     fun getWindowsLiveData(): LiveData<Collection<XpraWindow>> {
         return windowsLiveData
+    }
+
+    /**
+     * The applications of the server, from its menu.
+     */
+    fun getServerAppsLiveData(): LiveData<List<ServerApp>> {
+        return serverAppsLiveData
+    }
+
+    override fun onServerAppsChanged(apps: List<ServerApp>) {
+        serverAppsLiveData.postValue(apps)
+    }
+
+    /**
+     * Runs the action on the main thread, once the server has sent the windows it already had.
+     */
+    fun whenStartupComplete(action: Runnable) {
+        synchronized(startupActions) {
+            if (!isStartupComplete) {
+                startupActions.add(action)
+                return
+            }
+        }
+        mainHandler.post(action)
+    }
+
+    override fun onStartupComplete() {
+        super.onStartupComplete()
+        val actions = synchronized(startupActions) {
+            startupActions.toList().also { startupActions.clear() }
+        }
+        actions.forEach { mainHandler.post(it) }
+    }
+
+    override fun onDisconnect() {
+        super.onDisconnect()
+        synchronized(startupActions) {
+            startupActions.clear()
+        }
+        serverAppsLiveData.postValue(emptyList())
     }
 
     fun addEventListener(listener: XpraEventListener) {

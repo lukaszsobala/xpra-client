@@ -23,9 +23,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import xpra.protocol.PictureEncoding;
 import xpra.protocol.XpraReceiver;
@@ -44,6 +45,8 @@ import xpra.protocol.packets.NewWindowOverrideRedirect;
 import xpra.protocol.packets.Ping;
 import xpra.protocol.packets.PingEcho;
 import xpra.protocol.packets.RaiseWindow;
+import xpra.protocol.packets.SettingChange;
+import xpra.protocol.packets.StartCommand;
 import xpra.protocol.packets.StartupComplete;
 import xpra.protocol.packets.WindowIcon;
 import xpra.protocol.packets.WindowMetadata;
@@ -51,7 +54,8 @@ import xpra.protocol.packets.WindowMetadata;
 public abstract class XpraClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(XpraClient.class);
 
-    private final Map<Integer, XpraWindow> windows = new HashMap<>();
+    // read by the UI, while the packets change it
+    private final Map<Integer, XpraWindow> windows = new ConcurrentHashMap<>();
 
     private final PictureEncoding[] pictureEncodings;
     private final XpraKeyboard keyboard;
@@ -82,6 +86,9 @@ public abstract class XpraClient {
      * It is set to true, when the hello packet is received from a Server.
      */
     private volatile boolean handshakeComplete;
+    private volatile boolean startNewCommands;
+    private volatile boolean startupComplete;
+    private volatile List<ServerApp> serverApps = Collections.emptyList();
     private ClipboardSync clipboard;
 
 
@@ -204,10 +211,25 @@ public abstract class XpraClient {
                 LOGGER.info("raise-window: " + response.getWindowId());
             }
         });
+        receiver.registerHandler(SettingChange.class, new XpraReceiver.PacketHandler<SettingChange>() {
+            @Override
+            public void process(SettingChange packet) {
+                final String setting = packet.getSetting();
+                if ("menu".equals(setting) || "xdg-menu".equals(setting)) {
+                    serverApps = Collections.unmodifiableList(ServerApp.fromMenu(packet.getValue()));
+                    LOGGER.info("The server has " + serverApps.size() + " applications");
+                    onServerAppsChanged(serverApps);
+                } else if ("start-new-commands".equals(setting)) {
+                    startNewCommands = asBoolean(packet.getValue());
+                }
+            }
+        });
         receiver.registerHandler(StartupComplete.class, new XpraReceiver.PacketHandler<StartupComplete>() {
             @Override
             public void process(StartupComplete response) throws IOException {
                 LOGGER.info(response.toString());
+                startupComplete = true;
+                onStartupComplete();
             }
         });
     }
@@ -247,6 +269,48 @@ public abstract class XpraClient {
 
     protected void onWindowMetadataUpdated(XpraWindow window) {}
 
+    /**
+     * Called when the server has sent all the windows it had, after connecting.
+     */
+    protected void onStartupComplete() {}
+
+    public boolean isStartupComplete() {
+        return startupComplete;
+    }
+
+    /**
+     * Called when the server sent its applications, see {@link #getServerApps()}.
+     */
+    protected void onServerAppsChanged(List<ServerApp> apps) {}
+
+    /**
+     * The applications the server can start, from its menu.
+     */
+    public List<ServerApp> getServerApps() {
+        return serverApps;
+    }
+
+    /**
+     * Whether the server lets this client start applications.
+     */
+    public boolean canStartCommands() {
+        return startNewCommands;
+    }
+
+    /**
+     * Starts an application on the server.
+     */
+    public void startCommand(String name, String command) {
+        final XpraSender s = sender;
+        if (s != null) {
+            s.send(new StartCommand(name, command));
+        }
+    }
+
+    private static boolean asBoolean(Object value) {
+        return value instanceof Boolean ? (Boolean) value : value instanceof Number && ((Number) value).intValue() != 0;
+    }
+
     protected void onCursorUpdate(CursorPacket cursorPacket) {
         LOGGER.info(cursorPacket.toString());
     }
@@ -273,6 +337,9 @@ public abstract class XpraClient {
         disconnectedByServer = false;
         disconnectReason = null;
         handshakeComplete = false;
+        startNewCommands = false;
+        startupComplete = false;
+        serverApps = Collections.emptyList();
         sender = null;
         if (clipboard != null) {
             clipboard.setSender(null);
@@ -367,6 +434,8 @@ public abstract class XpraClient {
         public void process(HelloResponse response) throws IOException {
             LOGGER.info("Connected to Xpra server version " + response.getVersion());
             handshakeComplete = true;
+            final Object startCommands = response.getCaps().get("start-new-commands");
+            startNewCommands = asBoolean(startCommands);
             LOGGER.debug(response.toString());
         }
     }

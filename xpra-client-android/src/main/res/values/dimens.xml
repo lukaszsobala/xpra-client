@@ -15,4 +15,6 @@
 
     <dimen name="compact_toolbar_height">48dp</dimen>
     <dimen name="compact_toolbar_title_size">18sp</dimen>
+
+    <dimen name="app_icon_size">40dp</dimen>
 </resources>

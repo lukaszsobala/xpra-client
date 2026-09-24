@@ -74,6 +74,11 @@ public class HelloRequest extends xpra.protocol.IOPacket {
         caps.put("share", false);
         caps.put("ping", true);
 
+        // the applications of the server, to start them from this client:
+        caps.put("menu", true);
+        // servers older than 6.4:
+        caps.put("xdg-menu", true);
+
         // it is required, if client wants to display windows (since 4.x)
         caps.put("windows", true);
 

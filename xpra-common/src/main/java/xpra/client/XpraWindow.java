@@ -18,6 +18,9 @@
 
 package xpra.client;
 
+import java.util.Collections;
+import java.util.List;
+
 import xpra.protocol.XpraSender;
 import xpra.protocol.data.SizeConstraints;
 import xpra.protocol.packets.CloseWindow;
@@ -55,6 +58,9 @@ public abstract class XpraWindow {
 
     private String title;
 
+    private List<String> windowClasses = Collections.emptyList();
+    private String command;
+
 	public XpraWindow(NewWindow wndPacket) {
 		this.id = wndPacket.getWindowId();
 		this.x = wndPacket.getX();
@@ -90,6 +96,20 @@ public abstract class XpraWindow {
 
     public String getTitle() {
         return title;
+    }
+
+    /**
+     * The WM_CLASS of the window: its instance and class names, ie: ["geany", "Geany"].
+     */
+    public List<String> getWindowClasses() {
+        return windowClasses;
+    }
+
+    /**
+     * The command that started the application of this window (WM_COMMAND), or null.
+     */
+    public String getCommand() {
+        return command;
     }
 
     public int getX() {
@@ -132,6 +152,14 @@ public abstract class XpraWindow {
         final String title = metadata.getTitle();
         if (title != null) {
             this.title = title;
+        }
+        final List<String> classes = metadata.getClassInstance();
+        if (classes != null) {
+            this.windowClasses = classes;
+        }
+        final String command = metadata.getAsString("command");
+        if (command != null) {
+            this.command = command;
         }
         WindowIcon icon = metadata.getIcon();
         if (icon != null) {

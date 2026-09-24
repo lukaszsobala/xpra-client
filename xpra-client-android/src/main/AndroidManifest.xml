@@ -47,16 +47,28 @@
             </intent-filter>
         </activity>
 
+        <!-- each window has a task of its own in the recent apps, like an app,
+             which goes away when the window is closed -->
         <activity
             android:name=".view.XpraActivity"
-            android:exported="false">
-            <!-- android:documentLaunchMode="intoExisting" -->
-        </activity>
+            android:exported="false"
+            android:documentLaunchMode="intoExisting"
+            android:autoRemoveFromRecents="true" />
 
         <activity
             android:name=".ConnectXpraActivity"
             android:exported="false"
             android:excludeFromRecents="true"
+            android:theme="@style/AppTheme.Translucent"/>
+
+        <!-- started by the home screen icons of the server's applications: shortcuts start
+             activities of their app, which do not need to be exported -->
+        <activity
+            android:name=".apps.LaunchAppActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:theme="@style/AppTheme.Translucent"/>
 
         <!-- Keeps the remote session alive while its windows are in the background.

@@ -17,6 +17,7 @@
  */
 package com.github.jksiezni.xpra.view
 
+import android.app.ActivityManager
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -33,6 +34,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import com.github.jksiezni.xpra.R
+import com.github.jksiezni.xpra.apps.AppShortcuts
 import com.github.jksiezni.xpra.client.*
 import com.github.jksiezni.xpra.client.AndroidXpraWindow.XpraWindowListener
 import com.github.jksiezni.xpra.view.Intents.getWindowId
@@ -78,6 +80,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
                 return@whenXpraAvailable
             }
             title = rootWindow.title
+            updateTaskDescription(rootWindow)
             api.registerConnectionListener(this)
             api.xpraClient.addEventListener(this)
             rootWindow.addWindowListener(this)
@@ -215,6 +218,10 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
                 toggleKeyboard(binding.workspaceView)
                 true
             }
+            R.id.action_add_to_home_screen -> {
+                addToHomeScreen()
+                true
+            }
             R.id.action_close -> {
                 serviceBinderFragment.whenXpraAvailable { api ->
                     val window = api.xpraClient.getWindow(windowId)
@@ -224,6 +231,35 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    /**
+     * Adds the application of this window to the home screen: the server's menu says how to
+     * start it, or else the command which started it.
+     */
+    private fun addToHomeScreen() {
+        serviceBinderFragment.whenXpraAvailable { api ->
+            val window = api.xpraClient.getWindow(windowId) ?: return@whenXpraAvailable
+            val server = api.connectionDetails ?: return@whenXpraAvailable
+            val app = api.xpraClient.serverApps.firstOrNull { it.matchesWindow(window.windowClasses) }
+            val command = window.command
+            val windowClass = window.windowClasses.lastOrNull { it.isNotEmpty() }
+            when {
+                app != null -> AppShortcuts.pin(this, server, app.name, app.command, app.wmClass,
+                    AppShortcuts.decodeIcon(app) ?: window.icon)
+                !command.isNullOrBlank() -> AppShortcuts.pin(this, server, windowClass ?: window.title,
+                    command, windowClass, window.icon)
+                else -> Toast.makeText(this, R.string.app_not_found, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /**
+     * Each window has a task of its own, like an app: show its title and icon in the recent apps.
+     */
+    @Suppress("DEPRECATION")
+    private fun updateTaskDescription(window: AndroidXpraWindow) {
+        setTaskDescription(ActivityManager.TaskDescription(window.title, window.icon))
     }
 
     private fun toggleKeyboard(view: View?) {
@@ -260,10 +296,12 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
 
     override fun onMetadataChanged(window: AndroidXpraWindow) {
         title = window.title
+        updateTaskDescription(window)
     }
 
     override fun onIconChanged(window: AndroidXpraWindow) {
         supportActionBar?.setIcon(window.iconDrawable)
+        updateTaskDescription(window)
     }
 
     override fun onLost(window: AndroidXpraWindow) {

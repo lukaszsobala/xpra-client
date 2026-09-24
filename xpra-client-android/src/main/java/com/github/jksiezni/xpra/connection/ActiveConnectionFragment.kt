@@ -24,6 +24,10 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ConcatAdapter
+import com.github.jksiezni.xpra.R
+import com.github.jksiezni.xpra.apps.AppShortcuts
+import com.github.jksiezni.xpra.apps.ServerAppsAdapter
 import com.github.jksiezni.xpra.client.AndroidXpraWindow
 import com.github.jksiezni.xpra.client.ConnectionEventListener
 import com.github.jksiezni.xpra.view.Intents
@@ -87,12 +91,30 @@ class ActiveConnectionFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val adapter = TasksAdapter(binding.emptyView)
+        val windowsHeader = SectionHeaderAdapter(R.string.open_windows)
+        val appsHeader = SectionHeaderAdapter(R.string.server_apps)
+        val adapter = TasksAdapter { windows ->
+            windowsHeader.visible = windows.isNotEmpty()
+            updateEmptyView()
+        }
         adapter.onClickAction.subscribe { item ->
             val intent = Intents.createXpraIntent(requireContext(), item.windowId)
             startActivity(intent)
         }.addTo(disposables)
-        binding.windowsRecyclerView.adapter = adapter
+        val appsAdapter = ServerAppsAdapter(
+            onLaunch = { app ->
+                service.xpraAPI?.connectionDetails?.let { server ->
+                    startActivity(AppShortcuts.launchIntent(requireContext(), server.id, app))
+                }
+            },
+            onPin = { app, icon ->
+                service.xpraAPI?.connectionDetails?.let { server ->
+                    AppShortcuts.pin(requireContext(), server, app.name, app.command, app.wmClass, icon)
+                }
+            })
+        binding.windowsRecyclerView.adapter = ConcatAdapter(windowsHeader, adapter, appsHeader, appsAdapter)
+        tasksAdapter = adapter
+        this.appsAdapter = appsAdapter
 
         service.whenXpraAvailable { api ->
             api.xpraClient.getWindowsLiveData().observe(viewLifecycleOwner) { windows ->
@@ -102,6 +124,10 @@ class ActiveConnectionFragment : Fragment() {
                 }
                 adapter.submitList(items)
             }
+            api.xpraClient.getServerAppsLiveData().observe(viewLifecycleOwner) { apps ->
+                appsHeader.visible = apps.isNotEmpty()
+                appsAdapter.submitList(apps) { updateEmptyView() }
+            }
         }
 
         binding.createCommandBtn.setOnClickListener {
@@ -109,9 +135,20 @@ class ActiveConnectionFragment : Fragment() {
         }
     }
 
+    private var tasksAdapter: TasksAdapter? = null
+    private var appsAdapter: ServerAppsAdapter? = null
+
+    private fun updateEmptyView() {
+        val empty = (tasksAdapter?.itemCount ?: 0) == 0 && (appsAdapter?.itemCount ?: 0) == 0
+        _binding?.emptyView?.visibility = if (empty) View.VISIBLE else View.GONE
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         disposables.clear()
+        tasksAdapter = null
+        appsAdapter = null
+        _binding = null
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
