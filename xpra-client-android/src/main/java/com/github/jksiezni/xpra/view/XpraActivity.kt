@@ -23,6 +23,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -39,7 +40,10 @@ import com.github.jksiezni.xpra.client.*
 import com.github.jksiezni.xpra.client.AndroidXpraWindow.XpraWindowListener
 import com.github.jksiezni.xpra.view.Intents.getWindowId
 import com.github.jksiezni.xpra.view.Intents.isValidXpraActivityIntent
+import com.github.jksiezni.xpra.config.ConfigDatabase
 import com.github.jksiezni.xpra.config.ServerDetails
+import io.reactivex.schedulers.Schedulers
+import kotlin.math.roundToInt
 import com.github.jksiezni.xpra.databinding.ActivityXpraBinding
 import timber.log.Timber
 import xpra.client.KeyboardInput
@@ -234,6 +238,61 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     }
 
     /**
+     * The volume keys change the scale of the windows.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val step = when (event.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> 1
+            KeyEvent.KEYCODE_VOLUME_DOWN -> -1
+            else -> 0
+        }
+        if (step == 0) {
+            return super.dispatchKeyEvent(event)
+        }
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            changeScale(step)
+        }
+        return true
+    }
+
+    private var scaleToast: Toast? = null
+
+    private fun changeScale(step: Int) {
+        serviceBinderFragment.whenXpraAvailable { api ->
+            val client = api.xpraClient
+            val current = (client.scale * 100).roundToInt()
+            val percent = if (step > 0) SCALE_LEVELS.firstOrNull { it > current } else SCALE_LEVELS.lastOrNull { it < current }
+            if (percent != null) {
+                client.changeScale(percent / 100f, resources.displayMetrics)
+                val workspace = binding.workspaceView
+                for (i in 0 until workspace.childCount) {
+                    val view = workspace.getChildAt(i) as? ProxyView ?: continue
+                    view.window.resize(view.width, view.height)
+                    view.requestLayout()
+                }
+                api.connectionDetails?.let { saveScale(it, percent) }
+            }
+            scaleToast?.cancel()
+            scaleToast = Toast.makeText(this, getString(R.string.scale_percent, (client.scale * 100).roundToInt()),
+                Toast.LENGTH_SHORT).also { it.show() }
+        }
+    }
+
+    /**
+     * The scale chosen with the volume keys is kept for the next connections.
+     */
+    private fun saveScale(server: ServerDetails, percent: Int) {
+        server.scalePercent = percent
+        val db = ConfigDatabase.getInstance()
+        db.configs.getById(server.id)
+            .subscribeOn(Schedulers.io())
+            .subscribe({ saved ->
+                saved.scalePercent = percent
+                db.configs.save(saved)
+            }, { Timber.w(it, "Cannot save the scale") })
+    }
+
+    /**
      * Adds the application of this window to the home screen: the server's menu says how to
      * start it, or else the command which started it.
      */
@@ -334,6 +393,8 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
 
 
     private companion object {
+        /** the scales the volume keys go through, in percent: see the resolution setting */
+        val SCALE_LEVELS = intArrayOf(100, 125, 150, 175, 200, 225, 250, 275, 300, 350, 400)
         const val PREFS_NAME = "view_settings"
         const val PREF_TOUCHPAD_MODE = "touchpad_mode"
     }

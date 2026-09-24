@@ -72,6 +72,16 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
     }
 
     /**
+     * Changes the scale of the windows while connected: the views of the windows must then be
+     * resized, see [AndroidXpraWindow.resize].
+     */
+    fun changeScale(newScale: Float, dm: DisplayMetrics) {
+        scale = newScale
+        windows.forEach { (it as AndroidXpraWindow).scale = newScale }
+        updateDesktopSize(dm)
+    }
+
+    /**
      * Makes the server's virtual screen match the area our windows can use, ie: after the
      * device was rotated. Servers clamp windows to their screen size.
      */
