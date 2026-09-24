@@ -20,6 +20,16 @@ package xpra.protocol;
 
 public class ProtocolConstants {
 
-	public static final String VERSION = "0.15.0";
-	public static final String MIN_VERSION = "0.5";
+	/**
+	 * The Xpra protocol level implemented by this client (rencodeplus packet encoding,
+	 * nested capabilities), announced as the "version" capability.
+	 * Servers older than v3.0 reject it; the server only uses it for logging otherwise.
+	 */
+	public static final String VERSION = "6.0";
+
+	/**
+	 * The oldest server version this client works with, announced as the "protocol-version"
+	 * capability: servers only accept the "rencodeplus" packet encoding since v5.0.
+	 */
+	public static final int[] MIN_SERVER_VERSION = {5, 0};
 }

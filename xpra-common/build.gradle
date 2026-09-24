@@ -31,9 +31,6 @@ kotlin {
 }
 
 dependencies {
-    implementation 'com.github.jksiezni:bee-encode:0.3'
-    implementation 'com.github.jksiezni:rencode4j:1.2.0'
-
     api 'org.slf4j:slf4j-api:1.7.36'
     // Maintained fork of JSch (same com.jcraft.jsch API) supporting modern
     // OpenSSH key and signature algorithms (ed25519, rsa-sha2-*)

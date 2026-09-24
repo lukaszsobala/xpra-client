@@ -131,7 +131,14 @@ class GLComposer(private val callback: ComposeCallback) : GLThread() {
             val startTime = SystemClock.uptimeMillis()
             glWindow.makeCurrent()
             glWindow.validateTextureSize(packet.x + packet.w, packet.y + packet.h)
-            composeImage(glWindow.texture, packet)
+            try {
+                composeImage(glWindow.texture, packet)
+            } catch (e: Exception) {
+                // a negative decode time tells the server that this update failed
+                Timber.e(e, "Failed to draw %s", packet)
+                callback.onComposed(packet, -1)
+                return
+            }
             render(glWindow)
             callback.onComposed(packet, SystemClock.uptimeMillis() - startTime)
         } else {
@@ -152,6 +159,7 @@ class GLComposer(private val callback: ComposeCallback) : GLThread() {
         when (packet.encoding) {
             PictureEncoding.png, PictureEncoding.pngL, PictureEncoding.pngP, PictureEncoding.jpeg -> {
                 val bitmap = BitmapFactory.decodeByteArray(packet.data, 0, packet.data.size)
+                    ?: throw IllegalArgumentException("Failed to decode ${packet.encoding} image")
                 composeBitmap(tex, bitmap, packet.x, packet.y)
                 bitmap.recycle()
             }

@@ -43,7 +43,6 @@ import xpra.protocol.packets.NewWindowOverrideRedirect;
 import xpra.protocol.packets.Ping;
 import xpra.protocol.packets.PingEcho;
 import xpra.protocol.packets.RaiseWindow;
-import xpra.protocol.packets.SetDeflate;
 import xpra.protocol.packets.StartupComplete;
 import xpra.protocol.packets.WindowIcon;
 import xpra.protocol.packets.WindowMetadata;
@@ -63,6 +62,7 @@ public abstract class XpraClient {
     private PictureEncoding encoding;
     private int desktopWidth;
     private int desktopHeight;
+    private String username;
     private int dpi = 96;
     private int xdpi;
     private int ydpi;
@@ -71,6 +71,16 @@ public abstract class XpraClient {
      * It is set to true, when a disconnect packet is sent from a Server.
      */
     private boolean disconnectedByServer;
+
+    /**
+     * The reason given by the Server in its disconnect packet, if any.
+     */
+    private String disconnectReason;
+
+    /**
+     * It is set to true, when the hello packet is received from a Server.
+     */
+    private volatile boolean handshakeComplete;
 
 
     public XpraClient(int desktopWidth, int desktopHeight, PictureEncoding[] supportedPictureEncodings) {
@@ -91,7 +101,8 @@ public abstract class XpraClient {
         receiver.registerHandler(Disconnect.class, new XpraReceiver.PacketHandler<Disconnect>() {
             @Override
             public void process(Disconnect response) throws IOException {
-                LOGGER.debug("Server disconnected with msg: " + response.reason);
+                LOGGER.info("Server disconnected with msg: " + response.reason);
+                disconnectReason = response.reason;
                 disconnectedByServer = true;
             }
         });
@@ -117,12 +128,6 @@ public abstract class XpraClient {
                 windows.put(window.getId(), window);
                 window.onStart(response);
                 onWindowStarted(window);
-            }
-        });
-        receiver.registerHandler(SetDeflate.class, new XpraReceiver.PacketHandler<SetDeflate>() {
-            @Override
-            public void process(SetDeflate response) throws IOException {
-                sender.setCompressionLevel(response.compressionLevel);
             }
         });
         receiver.registerHandler(DrawPacket.class, new XpraReceiver.PacketHandler<DrawPacket>() {
@@ -240,6 +245,9 @@ public abstract class XpraClient {
         this.sender = sender;
         final HelloRequest hello = new HelloRequest(desktopWidth, desktopHeight, keyboard, encoding, pictureEncodings);
         hello.setDpi(dpi, xdpi, ydpi);
+        if (username != null && !username.isEmpty()) {
+            hello.setUsername(username);
+        }
         sender.send(hello);
     }
 
@@ -249,6 +257,8 @@ public abstract class XpraClient {
         }
         windows.clear();
         disconnectedByServer = false;
+        disconnectReason = null;
+        handshakeComplete = false;
         sender = null;
     }
 
@@ -280,6 +290,24 @@ public abstract class XpraClient {
         return disconnectedByServer;
     }
 
+    public String getDisconnectReason() {
+        return disconnectReason;
+    }
+
+    /**
+     * @return true, once the Server accepted the connection by sending its hello packet
+     */
+    public boolean isHandshakeComplete() {
+        return handshakeComplete;
+    }
+
+    /**
+     * Sets the user name sent to the Server, which defaults to the local user name.
+     */
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
     public void setPictureEncoding(PictureEncoding pictureEncoding) {
         this.encoding = pictureEncoding;
     }
@@ -291,13 +319,11 @@ public abstract class XpraClient {
 
     private class HelloHandler implements XpraReceiver.PacketHandler<HelloResponse> {
 
-        private final SetDeflate setDeflate = new SetDeflate(3);
-
         @Override
         public void process(HelloResponse response) throws IOException {
+            LOGGER.info("Connected to Xpra server version " + response.getVersion());
+            handshakeComplete = true;
             LOGGER.debug(response.toString());
-            sender.useRencode(response.isRencode());
-            sender.send(setDeflate);
         }
     }
 

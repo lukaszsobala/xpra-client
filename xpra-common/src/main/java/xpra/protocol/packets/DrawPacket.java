@@ -23,8 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import xpra.compression.CompressionException;
-import xpra.compression.Decompressor;
-import xpra.compression.Decompressors;
+import xpra.compression.LZ4;
 import xpra.protocol.PictureEncoding;
 
 public class DrawPacket extends WindowPacket {
@@ -60,15 +59,39 @@ public class DrawPacket extends WindowPacket {
         }
     }
 
+    /**
+     * Returns the pixels of an "rgb24" or "rgb32" update, decompressed and tightly packed
+     * ({@code w * bytesPerPixel} bytes per row), in the {@link #getRgbFormat() rgb format} sent by the server.
+     */
     public byte[] readPixels() throws CompressionException {
-        if (options.containsKey(Decompressors.COMP_ZLIB)) {
-            Decompressor d = Decompressors.getByName(Decompressors.COMP_ZLIB);
-            byte[] pixels = new byte[w * h * 3];
-            d.decompress(data, pixels);
-            return pixels;
-        } else {
-            return data;
+        byte[] pixels = data;
+        if (options.containsKey("lz4")) {
+            pixels = LZ4.decompress(pixels);
+        } else if (options.containsKey("zlib") || options.containsKey("brotli")) {
+            throw new CompressionException("unsupported pixel compression: " + options.keySet());
         }
+        final int bytesPerPixel = encoding == PictureEncoding.rgb24 ? 3 : 4;
+        final int packedStride = w * bytesPerPixel;
+        if (rowstride <= packedStride || h <= 1) {
+            return pixels;
+        }
+        // remove the padding at the end of each row:
+        final byte[] packed = new byte[packedStride * h];
+        for (int row = 0; row < h; ++row) {
+            System.arraycopy(pixels, row * rowstride, packed, row * packedStride, packedStride);
+        }
+        return packed;
+    }
+
+    /**
+     * @return the pixel format of "rgb24" and "rgb32" updates, ie: "RGB", "RGBX" or "RGBA"
+     */
+    public String getRgbFormat() {
+        final Object format = options.get("rgb_format");
+        if (format != null) {
+            return asString(format);
+        }
+        return encoding == PictureEncoding.rgb24 ? "RGB" : "RGBX";
     }
 
     public String getOption(String key) {

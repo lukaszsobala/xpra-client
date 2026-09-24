@@ -83,14 +83,10 @@ public class TcpXpraConnector extends XpraConnector implements Runnable {
             OutputStream os = socket.getOutputStream();
             socket.setKeepAlive(true);
             client.onConnect(new xpra.protocol.XpraSender(os));
-            fireOnConnectedEvent();
 
             PacketReader reader = new PacketReader(is);
             logger.info("Start Xpra connection...");
-            while (!Thread.interrupted() && !client.isDisconnectedByServer()) {
-                List<Object> dp = reader.readList();
-                onPacketReceived(dp);
-            }
+            readPackets(reader);
             logger.info("Finnished Xpra connection!");
         } catch (IOException e) {
             client.onConnectionError(e);
@@ -105,6 +101,28 @@ public class TcpXpraConnector extends XpraConnector implements Runnable {
             }
             client.onDisconnect();
             fireOnDisconnectedEvent();
+        }
+    }
+
+    /**
+     * Processes packets until the connection is closed. The connection is considered
+     * established once the Server accepted our hello, so if the Server disconnects before
+     * that, its reason is reported as a connection error.
+     */
+    private void readPackets(PacketReader reader) throws IOException {
+        boolean connected = false;
+        while (!Thread.interrupted() && !client.isDisconnectedByServer()) {
+            List<Object> dp = reader.readList();
+            onPacketReceived(dp);
+            if (!connected && client.isHandshakeComplete()) {
+                connected = true;
+                fireOnConnectedEvent();
+            }
+        }
+        if (!connected) {
+            final String reason = client.getDisconnectReason();
+            throw new IOException(reason != null ? "The server refused the connection: " + reason
+                : "The connection was closed during the handshake");
         }
     }
 

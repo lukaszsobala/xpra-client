@@ -52,7 +52,7 @@ public abstract class Packet {
 
     protected static String asString(Object obj) {
         if (obj instanceof byte[]) {
-            return new String((byte[]) obj);
+            return new String((byte[]) obj, java.nio.charset.StandardCharsets.UTF_8);
         } else {
             return (String) obj;
         }
@@ -74,6 +74,9 @@ public abstract class Packet {
     }
 
     protected byte[] asByteArray(Object obj) {
+        if (obj instanceof String) {
+            return ((String) obj).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
         return (byte[]) obj;
     }
 

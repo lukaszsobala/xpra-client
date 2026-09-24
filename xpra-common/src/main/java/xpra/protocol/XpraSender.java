@@ -25,24 +25,20 @@ import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.ardverk.coding.BencodingOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import xpra.network.HeaderChunk;
 
-import com.github.jksiezni.rencode.RencodeOutputStream;
-
+/**
+ * Sends packets to the server from a background thread, encoded with rencodeplus.
+ * Packets sent by a client are small, so they are never compressed.
+ */
 public final class XpraSender implements Closeable {
     private static final Logger logger = LoggerFactory.getLogger(XpraSender.class);
 
     private final OutputStream outputStream;
-
     private final SendWorker sendWorker;
-    //private final Deflater deflater = new Deflater();
-
-    private boolean useRencode = false;
-    private int compressionLevel = 0;
 
     public XpraSender(OutputStream os) {
         this.outputStream = os;
@@ -62,14 +58,6 @@ public final class XpraSender implements Closeable {
         sendWorker.queue.offer(list);
     }
 
-    public void useRencode(boolean enabled) {
-        this.useRencode = enabled;
-    }
-
-    public void setCompressionLevel(int compressionLevel) {
-        this.compressionLevel = compressionLevel;
-    }
-
     @Override
     public void close() throws IOException {
         sendWorker.interrupt();
@@ -81,58 +69,37 @@ public final class XpraSender implements Closeable {
     }
 
     private class SendWorker extends Thread {
-
         private final HeaderChunk headerChunk = new HeaderChunk();
-
         private final UnsafeByteArrayOutputStream byteStream = new UnsafeByteArrayOutputStream(4096);
-        private final BencodingOutputStream bencoder = new BencodingOutputStream(byteStream);
-        private final RencodeOutputStream rencoder = new RencodeOutputStream(byteStream);
+        private final BlockingQueue<ArrayList<Object>> queue = new LinkedBlockingQueue<>();
 
-        private final BlockingQueue<ArrayList> queue = new LinkedBlockingQueue<>();
+        SendWorker() {
+            super("XpraSender");
+            headerChunk.setFlags(HeaderChunk.FLAG_RENCODEPLUS);
+        }
 
         @Override
         public void run() {
             try {
                 while (!Thread.interrupted()) {
-                    ArrayList list = queue.take();
+                    ArrayList<Object> list = queue.take();
                     send(list);
                 }
             } catch (InterruptedException e) {
                 logger.debug("Finished sender thread.");
             }
-
         }
 
-        private void send(ArrayList list) {
+        private void send(ArrayList<Object> list) {
             try {
-                if (useRencode) {
-                    rencoder.writeCollection(list);
-                    headerChunk.setFlags(HeaderChunk.FLAG_RENCODE);
-                } else {
-                    bencoder.writeCollection(list);
-                    headerChunk.setFlags(0);
-                }
-
-                final byte[] bytes = byteStream.getBytes();
+                byteStream.reset();
+                RencodePlus.encode(byteStream, list);
                 final int packetSize = byteStream.size();
-
-                // compress data when enabled
-                if (compressionLevel > 0) {
-                    // currently we do not need to use a compressed data
-//				header[1] |= HeaderChunk.FLAG_ZLIB;
-//				deflater.setLevel(compressionLevel);
-//				deflater.setInput(bytes, 0, packetSize);
-//				deflater.deflate(b, off, len);
-//				deflater.reset();
-                }
-
                 headerChunk.setPacketSize(packetSize);
-
                 logger.trace("send(" + list + ")");
                 headerChunk.writeHeader(outputStream);
-                outputStream.write(bytes, 0, packetSize);
+                outputStream.write(byteStream.getBytes(), 0, packetSize);
                 outputStream.flush();
-                byteStream.reset();
             } catch (IOException e) {
                 logger.error("Failed to send packet: " + list.get(0), e);
             }

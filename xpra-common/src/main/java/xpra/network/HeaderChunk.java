@@ -25,15 +25,19 @@ import java.io.OutputStream;
 import java.util.Arrays;
 
 public class HeaderChunk {
-    public static final int FLAG_ZLIB = 0x0;
+
+    // protocol flags (header byte 1)
     public static final int FLAG_RENCODE = 0x1;
     public static final int FLAG_CIPHER = 0x2;
     public static final int FLAG_YAML = 0x4;
-    // 0x8 is free
-    public static final int FLAG_LZ4 = 0x10;
-    public static final int FLAG_LZO = 0x20;
-    public static final int FLAGS_NOHEADER = 0x40;
-    // 0x80 is free
+    public static final int FLAG_FLUSH = 0x8;
+    public static final int FLAG_RENCODEPLUS = 0x10;
+
+    // compressor flags (upper bits of header byte 2, the lower 4 bits hold the level)
+    public static final int COMPRESSION_LEVEL_MASK = 0x0F;
+    public static final int COMPRESSOR_LZ4 = 0x10;
+    public static final int COMPRESSOR_BROTLI = 0x40;
+    public static final int COMPRESSOR_ZSTD = 0x80;
 
     private static final int HEADER_SIZE = 8;
     private static final byte MAGIC_BYTE = 'P';
@@ -55,10 +59,17 @@ public class HeaderChunk {
             headerRead += bytesRead;
         }
         if (header[0] != MAGIC_BYTE) {
-            throw new IOException("Bad header. expected=80, received=" + header[0]);
+            // this is usually an error message printed by the remote command (ie: over SSH)
+            throw new IOException("Invalid data received from the server: "
+                + new String(header, java.nio.charset.StandardCharsets.UTF_8).trim());
         }
-        if (hasFlags(FLAG_CIPHER | FLAG_YAML | FLAG_LZ4 | FLAG_LZO | FLAGS_NOHEADER)) {
-            throw new IOException("unsupported flags detected");
+        if (hasFlags(~(FLAG_RENCODEPLUS | FLAG_FLUSH))) {
+            throw new IOException("unsupported protocol flags: 0x" + Integer.toHexString(getFlags() & 0xFF));
+        }
+        // lz4 is the only compressor we advertise
+        final int compressor = getCompressionLevel() & 0xF0;
+        if (isDataCompressed() && compressor != COMPRESSOR_LZ4) {
+            throw new IOException("unsupported compressor: 0x" + Integer.toHexString(compressor));
         }
     }
 
@@ -75,7 +86,7 @@ public class HeaderChunk {
     }
 
     boolean hasFlags(int flags) {
-        return (getFlags() & flags) > 0;
+        return (getFlags() & flags) != 0;
     }
 
     byte getCompressionLevel() {
@@ -87,11 +98,11 @@ public class HeaderChunk {
     }
 
     boolean isDataCompressed() {
-        return getCompressionLevel() > 0;
+        return getCompressionLevel() != 0;
     }
 
     int getPacketIndex() {
-        return header[3];
+        return header[3] & 0xFF;
     }
 
     void setPacketIndex(int packetIndex) {

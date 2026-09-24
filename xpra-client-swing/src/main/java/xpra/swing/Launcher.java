@@ -34,7 +34,10 @@ public class Launcher {
 
     public static void main(String[] args) throws Exception {
         XpraClient client = new SwingXpraClient();
-        XpraConnector connector = new TcpXpraConnector(client, "localhost", 10000);
+        // usage: Launcher [host [port]]
+        final String host = args.length > 0 ? args[0] : "localhost";
+        final int port = args.length > 1 ? Integer.parseInt(args[1]) : 10000;
+        XpraConnector connector = new TcpXpraConnector(client, host, port);
         //XpraConnector connector = createSSH(client);
 
         connector.connect();

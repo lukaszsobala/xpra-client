@@ -20,6 +20,12 @@ The project is in early stages of development, so it's not published in any app 
 
 However, you can build it yourself if you are familiar with Android development.
 
+## Compatibility
+
+The client speaks the current Xpra protocol ("rencodeplus" packets, lz4 compression)
+and has been tested against Xpra servers 6.5 and 7.0, over TCP and SSH.
+Servers older than 5.0 are not supported.
+
 ## Contributions
 
 Currently, all pull request will be rejected, because I look for a better licensing options than GPL.

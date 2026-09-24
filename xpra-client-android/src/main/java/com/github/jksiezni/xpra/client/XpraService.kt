@@ -111,6 +111,8 @@ class XpraService : Service() {
 
     @Throws(IOException::class)
     private fun prepareConnector(c: ServerDetails, userInfoHandler: SshUserInfoHandler): XpraConnector {
+        // Xpra servers require a user name, even for connections without authentication
+        client.setUsername(c.username?.takeIf { it.isNotBlank() } ?: DEFAULT_USERNAME)
         return when (c.type) {
             ConnectionType.TCP -> TcpXpraConnector(client, c.host, c.port)
             ConnectionType.SSH -> {
@@ -241,6 +243,7 @@ class XpraService : Service() {
     companion object {
         private const val CHANNEL_ID = "service_channel"
         private const val ACTION_STOP = "action_stop"
+        private const val DEFAULT_USERNAME = "android"
         private const val PENDING_INTENT_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     }
 }
