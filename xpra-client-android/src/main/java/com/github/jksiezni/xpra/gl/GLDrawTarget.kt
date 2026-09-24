@@ -56,7 +56,9 @@ internal class GLDrawTarget(
         }
         if (width != textureWidth || height != textureHeight) {
             Timber.d("create texture ${width}x${height}")
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, width, height, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, null)
+            // OpenGL ES 2 requires updates to use the texture's format: Android bitmaps are RGBA,
+            // so the texture is RGBA too and "rgb" pixels are converted to RGBA before uploading
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
             GlUtil.checkGlError("glTexImage2D")
             textureWidth = width
             textureHeight = height

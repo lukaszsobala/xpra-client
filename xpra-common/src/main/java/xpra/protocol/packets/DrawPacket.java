@@ -85,6 +85,35 @@ public class DrawPacket extends WindowPacket {
     }
 
     /**
+     * Returns the pixels of an "rgb24" or "rgb32" update as tightly packed RGBA,
+     * converting the other {@link #getRgbFormat() rgb formats} and making "X" padding opaque.
+     */
+    public byte[] readRgbaPixels() throws CompressionException {
+        final byte[] pixels = readPixels();
+        final String format = getRgbFormat();
+        if ("RGBA".equals(format)) {
+            return pixels;
+        }
+        final int bytesPerPixel = format.length();
+        final int red = format.indexOf('R');
+        final int green = format.indexOf('G');
+        final int blue = format.indexOf('B');
+        final int alpha = format.indexOf('A');
+        if ((bytesPerPixel != 3 && bytesPerPixel != 4) || red < 0 || green < 0 || blue < 0) {
+            throw new CompressionException("unsupported rgb format: " + format);
+        }
+        final int count = pixels.length / bytesPerPixel;
+        final byte[] rgba = new byte[count * 4];
+        for (int i = 0, src = 0, dst = 0; i < count; ++i, src += bytesPerPixel, dst += 4) {
+            rgba[dst] = pixels[src + red];
+            rgba[dst + 1] = pixels[src + green];
+            rgba[dst + 2] = pixels[src + blue];
+            rgba[dst + 3] = alpha >= 0 ? pixels[src + alpha] : (byte) 0xFF;
+        }
+        return rgba;
+    }
+
+    /**
      * @return the size of the window when the server sent this update, as {@code {width, height}},
      * or {@code null} if the server did not include it
      */

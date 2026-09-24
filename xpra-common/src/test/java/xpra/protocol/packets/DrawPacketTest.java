@@ -74,6 +74,33 @@ public class DrawPacketTest {
         assertNull(draw(PACKED, 9, Collections.<String, Object>emptyMap()).getWindowSize());
     }
 
+    @Test
+    public void testRgbaConversion() throws CompressionException {
+        final Map<String, Object> options = new HashMap<>();
+        options.put("rgb_format", "RGB");
+        final byte[] rgba = draw(PACKED, 9, options).readRgbaPixels();
+        assertArrayEquals(new byte[]{1, 2, 3, -1, 4, 5, 6, -1, 7, 8, 9, -1, 10, 11, 12, -1, 13, 14, 15, -1, 16, 17, 18, -1}, rgba);
+    }
+
+    @Test
+    public void testRgbxAndBgrxConversion() throws CompressionException {
+        final byte[] pixels = {1, 2, 3, 0, 4, 5, 6, 0};
+        final Map<String, Object> options = new HashMap<>();
+        options.put("rgb_format", "RGBX");
+        assertArrayEquals(new byte[]{1, 2, 3, -1, 4, 5, 6, -1}, drawRgb32(pixels, options).readRgbaPixels());
+        options.put("rgb_format", "BGRX");
+        assertArrayEquals(new byte[]{3, 2, 1, -1, 6, 5, 4, -1}, drawRgb32(pixels, options).readRgbaPixels());
+        options.put("rgb_format", "RGBA");
+        assertArrayEquals(pixels, drawRgb32(pixels, options).readRgbaPixels());
+    }
+
+    private static DrawPacket drawRgb32(byte[] data, Map<String, Object> options) {
+        final List<Object> fields = Arrays.<Object>asList(1, 0, 0, 2, 1, PictureEncoding.rgb32.toString(), data, 7, 8, options);
+        final DrawPacket packet = new DrawPacket();
+        packet.deserialize(fields.iterator());
+        return packet;
+    }
+
     private static DrawPacket draw(byte[] data, int rowstride, Map<String, Object> options) {
         final List<Object> fields = Arrays.<Object>asList(1, 0, 0, 3, 2, PictureEncoding.rgb24.toString(), data, 7, rowstride, options);
         final DrawPacket packet = new DrawPacket();
