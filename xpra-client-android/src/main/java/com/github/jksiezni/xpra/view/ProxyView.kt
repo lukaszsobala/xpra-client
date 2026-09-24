@@ -21,7 +21,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.view.*
-import com.github.jksiezni.xpra.client.AndroidXpraKeyboard
 import com.github.jksiezni.xpra.client.AndroidXpraWindow
 import timber.log.Timber
 import kotlin.math.max
@@ -97,24 +96,6 @@ class ProxyView(context: Context, val window: AndroidXpraWindow) : TextureView(c
                 }
                 MotionEvent.ACTION_MOVE -> window.movePointer(x, y)
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> window.mouseAction(1, false, x, y)
-            }
-            return true
-        }
-    }
-
-    inner class KeyHandler : OnKeyListener {
-        override fun onKey(v: View, keyCode: Int, event: KeyEvent): Boolean {
-            Timber.v("onKey(%d, %s)", keyCode, event)
-            if (event.isSystem) {
-                Timber.v("isSystem event")
-                return false
-            }
-            Timber.v("char=%d", event.unicodeChar)
-            when (event.action) {
-                KeyEvent.ACTION_DOWN -> window.keyboardAction(keyCode, AndroidXpraKeyboard.getUnicodeName(keyCode), true)
-                KeyEvent.ACTION_UP -> window.keyboardAction(keyCode, AndroidXpraKeyboard.getUnicodeName(keyCode), false)
-                else -> {
-                }
             }
             return true
         }

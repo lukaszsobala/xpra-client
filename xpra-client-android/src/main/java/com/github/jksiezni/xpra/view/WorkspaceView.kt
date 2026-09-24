@@ -22,13 +22,17 @@ import android.content.Context
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.GestureDetector
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.widget.FrameLayout
 import android.widget.Scroller
 import androidx.core.math.MathUtils
 import androidx.core.view.children
+import xpra.client.KeyboardInput
 
 /**
  *
@@ -40,6 +44,46 @@ class WorkspaceView : FrameLayout {
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int) : super(context, attrs, defStyleAttr, defStyleRes)
 
     private val overflingDistance = ViewConfiguration.get(context).scaledOverflingDistance
+
+    /**
+     * Where the keyboard input goes, ie: the window shown by this workspace.
+     */
+    var keyboardInput: KeyboardInput? = null
+
+    init {
+        // receives the keys of hardware keyboards, and of on-screen keyboards once shown
+        isFocusable = true
+        isFocusableInTouchMode = true
+    }
+
+    override fun onCheckIsTextEditor(): Boolean = true
+
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
+        XpraInputConnection.configure(outAttrs)
+        return XpraInputConnection(this) { keyboardInput }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
+        handleKey(event) || super.onKeyDown(keyCode, event)
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        handleKey(event) || super.onKeyUp(keyCode, event)
+
+    override fun onKeyMultiple(keyCode: Int, repeatCount: Int, event: KeyEvent): Boolean =
+        handleKey(event) || super.onKeyMultiple(keyCode, repeatCount, event)
+
+    private fun handleKey(event: KeyEvent): Boolean {
+        val keyboard = keyboardInput ?: return false
+        return XpraInputConnection.handleKeyEvent(keyboard, event)
+    }
+
+    override fun onFocusChanged(gainFocus: Boolean, direction: Int, previouslyFocusedRect: Rect?) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
+        if (!gainFocus) {
+            // do not leave modifiers stuck on the server
+            keyboardInput?.releaseModifiers()
+        }
+    }
 
     override fun shouldDelayChildPressedState(): Boolean {
         return true

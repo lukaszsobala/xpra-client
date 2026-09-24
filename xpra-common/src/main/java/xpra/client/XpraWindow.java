@@ -216,4 +216,12 @@ public abstract class XpraWindow {
 	public void keyboardAction(int keycode, String keyname, boolean pressed) {
 		sender.send(new KeyAction(id, keycode, keyname, pressed));
 	}
+
+	/**
+	 * @param modifiers the modifiers held down, ie: "shift" or "control"
+	 * @param string the text produced by the key, if any
+	 */
+	public void keyboardAction(int keycode, String keyname, boolean pressed, java.util.List<String> modifiers, String string) {
+		sender.send(new KeyAction(id, keycode, keyname, pressed, modifiers, string));
+	}
 }

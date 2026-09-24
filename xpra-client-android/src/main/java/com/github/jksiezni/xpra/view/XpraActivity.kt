@@ -34,6 +34,7 @@ import com.github.jksiezni.xpra.view.Intents.isValidXpraActivityIntent
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActivityXpraBinding
 import timber.log.Timber
+import xpra.client.KeyboardInput
 import java.io.IOException
 
 class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener, ConnectionEventListener {
@@ -70,6 +71,8 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             api.xpraClient.addEventListener(this)
             rootWindow.addWindowListener(this)
             restoreProxyViewHierarchy(rootWindow)
+            binding.workspaceView.keyboardInput = KeyboardInput(rootWindow)
+            binding.workspaceView.requestFocus()
             setResult(RESULT_OK)
         }
     }
