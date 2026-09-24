@@ -28,6 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import xpra.client.KeyboardInput;
 import xpra.client.XpraKeyboard;
 import xpra.client.XpraKeyboard.KeyDesc;
 import xpra.protocol.PictureEncoding;
@@ -148,22 +149,15 @@ public class HelloRequest extends xpra.protocol.IOPacket {
         if (!variant.isEmpty()) {
             keymap.put("variant", variant);
         }
-        keymap.put("keycodes", buildKeycodes(keyboard.getKeycodes()));
+        final List<KeyDesc> keycodes = keyboard.getKeycodes();
+        if (keycodes.isEmpty()) {
+            // keys are sent by name, on a known keyboard map which replaces the server's:
+            keymap.putAll(KeyboardInput.getUsKeymap());
+        } else {
+            keymap.put("keycodes", buildKeycodes(keycodes));
+        }
         // the modifier of each modifier key, which servers need to set the modifier state:
-        final Map<String, Object> modMeanings = new LinkedHashMap<>();
-        modMeanings.put("Shift_L", "shift");
-        modMeanings.put("Shift_R", "shift");
-        modMeanings.put("Caps_Lock", "lock");
-        modMeanings.put("Control_L", "control");
-        modMeanings.put("Control_R", "control");
-        modMeanings.put("Alt_L", "mod1");
-        modMeanings.put("Alt_R", "mod1");
-        modMeanings.put("Meta_L", "mod1");
-        modMeanings.put("Num_Lock", "mod2");
-        modMeanings.put("Super_L", "mod4");
-        modMeanings.put("Super_R", "mod4");
-        modMeanings.put("ISO_Level3_Shift", "mod5");
-        keymap.put("mod_meanings", modMeanings);
+        keymap.put("mod_meanings", KeyboardInput.MOD_MEANINGS);
         keymap.put("sync", false);
         caps.put("keymap", keymap);
     }

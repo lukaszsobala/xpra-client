@@ -19,8 +19,13 @@
 package xpra.client;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,6 +38,10 @@ import java.util.Set;
  * <p>
  * Every key event carries the modifiers currently held down, as servers set their modifier
  * state from it: without "shift" in that list, a server releases the shift key.
+ * <p>
+ * Other characters, ie: "é" or "€", are not on a US keyboard, and servers ignore the keys
+ * they cannot find in their keyboard map. These are assigned to keycodes that the US layout
+ * leaves unused, and sent to the server in a new keyboard map before they are typed.
  */
 public class KeyboardInput {
 
@@ -75,7 +84,54 @@ public class KeyboardInput {
         MODIFIERS.put("Super_R", "mod4");
     }
 
+    /**
+     * The modifier of each modifier key, which servers need to set their modifier state.
+     */
+    public static final Map<String, Object> MOD_MEANINGS;
+
+    static {
+        final Map<String, Object> meanings = new LinkedHashMap<>();
+        meanings.put("Shift_L", "shift");
+        meanings.put("Shift_R", "shift");
+        meanings.put("Caps_Lock", "lock");
+        meanings.put("Control_L", "control");
+        meanings.put("Control_R", "control");
+        meanings.put("Alt_L", "mod1");
+        meanings.put("Alt_R", "mod1");
+        meanings.put("Meta_L", "mod1");
+        meanings.put("Num_Lock", "mod2");
+        meanings.put("Super_L", "mod4");
+        meanings.put("Super_R", "mod4");
+        meanings.put("ISO_Level3_Shift", "mod5");
+        MOD_MEANINGS = Collections.unmodifiableMap(meanings);
+    }
+
+    /**
+     * The keycode of each keysym on the US layout.
+     */
+    private static final Map<String, Integer> US_KEYCODES = new HashMap<>();
+
+    static {
+        for (String key : UsKeymap.KEYS) {
+            final String[] fields = key.split(" ");
+            for (int i = 1; i < fields.length; ++i) {
+                US_KEYCODES.putIfAbsent(fields[i], Integer.valueOf(fields[0]));
+            }
+        }
+    }
+
+    /**
+     * The client keycodes of the keys missing from the US layout start above the X11 keycodes.
+     */
+    private static final int FIRST_KEYCODE = 1000;
+
     private final XpraWindow window;
+
+    /**
+     * The characters that are not on a US keyboard, by keysym name, and the spare keycodes
+     * they are mapped to, the least recently used first.
+     */
+    private final LinkedHashMap<String, Integer> extraKeys = new LinkedHashMap<>(16, 0.75f, true);
 
     /**
      * The modifier keys currently held down.
@@ -83,8 +139,9 @@ public class KeyboardInput {
     private final Set<String> pressedModifierKeys = new LinkedHashSet<>();
 
     /**
-     * A distinct client keycode for each key name: servers find the key to release by its
-     * client keycode, so using the same one for all keys would release the wrong keys.
+     * A distinct client keycode for each key name missing from the US layout: servers find the
+     * key to release by its client keycode, so using the same one for all keys would release
+     * the wrong keys.
      */
     private final Map<String, Integer> keycodes = new HashMap<>();
 
@@ -104,6 +161,12 @@ public class KeyboardInput {
     }
 
     public void typeCharacter(int codepoint) {
+        if (!isOnUsKeyboard(codepoint)) {
+            if (!Character.isISOControl(codepoint)) {
+                typeExtraCharacter(getKeysym(codepoint));
+            }
+            return;
+        }
         final String keysym = getKeysym(codepoint);
         final boolean shift = needsShift(codepoint);
         if (shift) {
@@ -130,10 +193,82 @@ public class KeyboardInput {
         window.keyboardAction(getKeycode(keysym), keysym, pressed, getModifiers(), null);
     }
 
+    private void typeExtraCharacter(String keysym) {
+        Integer keycode = extraKeys.get(keysym);
+        if (keycode == null) {
+            if (extraKeys.size() < UsKeymap.SPARE_KEYCODES.length) {
+                keycode = UsKeymap.SPARE_KEYCODES[extraKeys.size()];
+            } else {
+                // replace the least recently used character:
+                final Iterator<Integer> eldest = extraKeys.values().iterator();
+                keycode = eldest.next();
+                eldest.remove();
+            }
+            extraKeys.put(keysym, keycode);
+            window.keymapChanged(getKeymap());
+        }
+        window.keyboardAction(keycode, keysym, true, getModifiers(), null);
+        window.keyboardAction(keycode, keysym, false, getModifiers(), null);
+    }
+
+    /**
+     * @return a keyboard map with the US layout and the extra characters on the spare keycodes:
+     * servers replace all the keys between the lowest and highest keycodes of a map, so it must
+     * include every key
+     */
+    Map<String, Object> getKeymap() {
+        return buildKeymap(extraKeys);
+    }
+
+    /**
+     * @return a keyboard map with only the US layout, for clients typing with this class
+     */
+    public static Map<String, Object> getUsKeymap() {
+        return buildKeymap(Collections.<String, Integer>emptyMap());
+    }
+
+    private static Map<String, Object> buildKeymap(Map<String, Integer> extraKeys) {
+        final List<Object> keycodes = new ArrayList<>();
+        final Map<Object, Object> x11Keycodes = new LinkedHashMap<>();
+        for (String key : UsKeymap.KEYS) {
+            final String[] fields = key.split(" ");
+            final Integer keycode = Integer.valueOf(fields[0]);
+            final List<String> keysyms = new ArrayList<>();
+            for (int level = 1; level < fields.length; ++level) {
+                final String keysym = "-".equals(fields[level]) ? "" : fields[level];
+                keysyms.add(keysym);
+                if (!keysym.isEmpty()) {
+                    // (keyval, keyname, keycode, group, level):
+                    keycodes.add(Arrays.asList(0, keysym, keycode, 0, level - 1));
+                }
+            }
+            x11Keycodes.put(keycode, keysyms);
+        }
+        for (Map.Entry<String, Integer> e : extraKeys.entrySet()) {
+            keycodes.add(Arrays.asList(0, e.getKey(), e.getValue(), 0, 0));
+            x11Keycodes.put(e.getValue(), Collections.singletonList(e.getKey()));
+        }
+        final Map<String, Object> query = new LinkedHashMap<>();
+        query.put("rules", "evdev");
+        query.put("model", "pc105");
+        query.put("layout", "us");
+        final Map<String, Object> keymap = new LinkedHashMap<>();
+        keymap.put("layout", "us");
+        keymap.put("keycodes", keycodes);
+        keymap.put("x11_keycodes", x11Keycodes);
+        keymap.put("query_struct", query);
+        keymap.put("mod_meanings", MOD_MEANINGS);
+        return keymap;
+    }
+
     private int getKeycode(String keysym) {
+        final Integer usKeycode = US_KEYCODES.get(keysym);
+        if (usKeycode != null) {
+            return usKeycode;
+        }
         Integer keycode = keycodes.get(keysym);
         if (keycode == null) {
-            keycode = keycodes.size() + 1;
+            keycode = FIRST_KEYCODE + keycodes.size();
             keycodes.put(keysym, keycode);
         }
         return keycode;
@@ -142,7 +277,7 @@ public class KeyboardInput {
     /**
      * @return the X11 modifiers currently held down, ie: "shift" or "control"
      */
-    public java.util.List<String> getModifiers() {
+    public List<String> getModifiers() {
         final Set<String> modifiers = new LinkedHashSet<>();
         for (String key : pressedModifierKeys) {
             modifiers.add(MODIFIERS.get(key));
@@ -177,8 +312,14 @@ public class KeyboardInput {
         if (name != null) {
             return name;
         }
-        // other Unicode characters: only typed if the server's layout has them
         return String.format("U%04X", codepoint);
+    }
+
+    /**
+     * @return true if the character has a key on a US keyboard
+     */
+    public static boolean isOnUsKeyboard(int codepoint) {
+        return (codepoint >= 0x20 && codepoint < 0x7f) || codepoint == '\n' || codepoint == '\r' || codepoint == '\t';
     }
 
     /**

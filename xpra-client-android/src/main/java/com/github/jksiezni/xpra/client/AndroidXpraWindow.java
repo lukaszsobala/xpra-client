@@ -166,6 +166,17 @@ public class AndroidXpraWindow extends XpraWindow {
         }
     }
 
+    /**
+     * Resizes the window on the server to its new view size, ie: when the soft keyboard or the
+     * system bars take some of the screen. Windows are drawn stretched to fill their view, so
+     * without this, the picture is squashed and touches land away from the finger.
+     */
+    public void resize(int width, int height) {
+        if (!isOverrideRedirect() && !hasParent() && isShown()) {
+            configureWindow(0, 0, (int) (width / scale), (int) (height / scale));
+        }
+    }
+
     public void hide(SurfaceTexture surfaceTexture) {
         composer.removeSurface(getId(), surfaceTexture);
         if (!isOverrideRedirect()) {

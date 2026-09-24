@@ -224,4 +224,11 @@ public abstract class XpraWindow {
 	public void keyboardAction(int keycode, String keyname, boolean pressed, java.util.List<String> modifiers, String string) {
 		sender.send(new KeyAction(id, keycode, keyname, pressed, modifiers, string));
 	}
+
+	/**
+	 * Sends a new keyboard map to the server.
+	 */
+	public void keymapChanged(java.util.Map<String, Object> keymap) {
+		sender.send(new xpra.protocol.packets.KeymapChanged(keymap));
+	}
 }
