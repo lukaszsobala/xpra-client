@@ -130,7 +130,7 @@ class GLComposer(private val callback: ComposeCallback) : GLThread() {
             // process packet
             val startTime = SystemClock.uptimeMillis()
             glWindow.makeCurrent()
-            glWindow.validateTextureSize(packet.x + packet.w, packet.y + packet.h)
+            glWindow.validateTextureSize(packet.windowSize, packet.x + packet.w, packet.y + packet.h)
             try {
                 composeImage(glWindow.texture, packet)
             } catch (e: Exception) {

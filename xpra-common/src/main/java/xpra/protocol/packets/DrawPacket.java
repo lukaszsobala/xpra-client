@@ -20,6 +20,7 @@ package xpra.protocol.packets;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import xpra.compression.CompressionException;
@@ -81,6 +82,19 @@ public class DrawPacket extends WindowPacket {
             System.arraycopy(pixels, row * rowstride, packed, row * packedStride, packedStride);
         }
         return packed;
+    }
+
+    /**
+     * @return the size of the window when the server sent this update, as {@code {width, height}},
+     * or {@code null} if the server did not include it
+     */
+    public int[] getWindowSize() {
+        final Object size = options.get("window-size");
+        if (size instanceof List && ((List<?>) size).size() >= 2) {
+            final List<?> list = (List<?>) size;
+            return new int[]{asInt(list.get(0)), asInt(list.get(1))};
+        }
+        return null;
     }
 
     /**

@@ -31,6 +31,7 @@ import xpra.protocol.PictureEncoding;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class DrawPacketTest {
 
@@ -63,6 +64,14 @@ public class DrawPacketTest {
     public void testPackedRows() throws CompressionException {
         final DrawPacket packet = draw(PACKED, 9, Collections.<String, Object>emptyMap());
         assertArrayEquals(PACKED, packet.readPixels());
+    }
+
+    @Test
+    public void testWindowSize() {
+        final Map<String, Object> options = new HashMap<>();
+        options.put("window-size", Arrays.asList(484, 316));
+        assertArrayEquals(new int[]{484, 316}, draw(PACKED, 9, options).getWindowSize());
+        assertNull(draw(PACKED, 9, Collections.<String, Object>emptyMap()).getWindowSize());
     }
 
     private static DrawPacket draw(byte[] data, int rowstride, Map<String, Object> options) {
