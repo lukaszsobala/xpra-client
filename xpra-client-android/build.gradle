@@ -54,6 +54,12 @@ android {
     buildFeatures {
         viewBinding true
     }
+    packaging {
+        resources {
+            // OSGi/JPMS metadata of multi-release jars (JSch, JSpecify), unused on Android
+            excludes += ['META-INF/versions/9/OSGI-INF/MANIFEST.MF', 'META-INF/versions/*/module-info.class']
+        }
+    }
 }
 
 kotlin {
