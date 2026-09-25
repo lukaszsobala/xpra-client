@@ -109,6 +109,10 @@ class ZoomLayout @JvmOverloads constructor(context: Context, attrs: AttributeSet
      */
     fun setZoom(newZoom: Float, left: Float, top: Float) {
         val child = getChildAt(0) ?: return
+        if (newZoom != zoom) {
+            // what the child draws at a fixed size, ie: the touchpad pointer, follows the zoom
+            child.invalidate()
+        }
         zoom = newZoom
         child.pivotX = 0f
         child.pivotY = 0f
@@ -119,6 +123,37 @@ class ZoomLayout @JvmOverloads constructor(context: Context, attrs: AttributeSet
     }
 
     fun resetZoom() = setZoom(1f, 0f, 0f)
+
+    /**
+     * Pans, while zoomed in, so that a point of the child stays on the screen, ie: the pointer
+     * which moves towards an edge.
+     *
+     * @param x - the point, in the (unzoomed) coordinates of the child
+     */
+    fun keepVisible(x: Float, y: Float) {
+        val child = getChildAt(0) ?: return
+        if (zoom <= 1f) {
+            return
+        }
+        val margin = (EDGE_MARGIN_DP * resources.displayMetrics.density).coerceAtMost(minOf(width, height) / 4f)
+        val onScreenX = child.translationX + x * zoom
+        val onScreenY = child.translationY + y * zoom
+        var left = child.translationX
+        var top = child.translationY
+        if (onScreenX < margin) {
+            left += margin - onScreenX
+        } else if (onScreenX > width - margin) {
+            left -= onScreenX - (width - margin)
+        }
+        if (onScreenY < margin) {
+            top += margin - onScreenY
+        } else if (onScreenY > height - margin) {
+            top -= onScreenY - (height - margin)
+        }
+        if (left != child.translationX || top != child.translationY) {
+            setZoom(zoom, left, top)
+        }
+    }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -136,5 +171,7 @@ class ZoomLayout @JvmOverloads constructor(context: Context, attrs: AttributeSet
         const val MAX_ZOOM = 5f
         /** zooms this close to 1 go back to 1 */
         const val SNAP_ZOOM = 1.1f
+        /** how close to an edge the pointer gets before panning */
+        const val EDGE_MARGIN_DP = 48f
     }
 }

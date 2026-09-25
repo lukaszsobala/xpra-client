@@ -126,6 +126,13 @@ class WorkspaceView : FrameLayout {
         return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
     }
 
+    /**
+     * Keeps a point of this view on the screen while zoomed in, see [ZoomLayout.keepVisible].
+     */
+    fun keepVisible(x: Float, y: Float) {
+        (parent as? ZoomLayout)?.keepVisible(x, y)
+    }
+
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
         if (touchpadMode) {
@@ -199,7 +206,8 @@ class WorkspaceView : FrameLayout {
         fun drawPointer(canvas: Canvas) {
             canvas.save()
             canvas.translate(pointerX, pointerY)
-            canvas.scale(density, density)
+            // the same size, whatever the zoom:
+            canvas.scale(density / scaleX, density / scaleY)
             canvas.drawPath(pointerPath, fill)
             canvas.drawPath(pointerPath, outline)
             canvas.restore()
@@ -208,10 +216,12 @@ class WorkspaceView : FrameLayout {
         fun onTouch(event: MotionEvent): Boolean {
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    downX = event.x
-                    downY = event.y
-                    lastX = event.x
-                    lastY = event.y
+                    // on the screen, not in this view, which moves when it pans while zoomed in:
+                    // the pointer would run away, pushing the view which pushes the pointer...
+                    downX = event.rawX
+                    downY = event.rawY
+                    lastX = event.rawX
+                    lastY = event.rawY
                     downTime = event.eventTime
                     if (event.eventTime - lastTapTime < ViewConfiguration.getDoubleTapTimeout()) {
                         // touching again right after a tap: a double click, or a drag
@@ -234,19 +244,19 @@ class WorkspaceView : FrameLayout {
                 }
                 MotionEvent.ACTION_MOVE -> {
                     when (state) {
-                        State.PENDING -> if (abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop) {
+                        State.PENDING -> if (abs(event.rawX - downX) > touchSlop || abs(event.rawY - downY) > touchSlop) {
                             removeCallbacks(longPress)
                             state = State.MOVING
-                            movePointerBy(event.x - lastX, event.y - lastY)
+                            movePointerBy((event.rawX - lastX) / scaleX, (event.rawY - lastY) / scaleY)
                         }
-                        State.MOVING, State.DRAGGING -> movePointerBy(event.x - lastX, event.y - lastY)
+                        State.MOVING, State.DRAGGING -> movePointerBy((event.rawX - lastX) / scaleX, (event.rawY - lastY) / scaleY)
                         State.SCROLLING -> if (event.pointerCount >= 2) {
                             scroll((event.getX(0) + event.getX(1)) / 2, (event.getY(0) + event.getY(1)) / 2)
                         }
                         else -> {}
                     }
-                    lastX = event.x
-                    lastY = event.y
+                    lastX = event.rawX
+                    lastY = event.rawY
                 }
                 MotionEvent.ACTION_POINTER_UP -> if (state == State.SCROLLING) {
                     if (!scrolled && event.eventTime - downTime < ViewConfiguration.getLongPressTimeout()) {
@@ -288,6 +298,7 @@ class WorkspaceView : FrameLayout {
             target()?.let { view ->
                 view.window.movePointer(toWindow(pointerX, view), toWindow(pointerY, view))
             }
+            keepVisible(pointerX - scrollX, pointerY - scrollY)
             invalidate()
         }
 

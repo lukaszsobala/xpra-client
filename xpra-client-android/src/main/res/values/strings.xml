@@ -62,4 +62,23 @@
     <string name="locked_key">%1$s 🔒</string>
     <string name="show_toolbar">Show the toolbar</string>
     <string name="hide_toolbar">Hide the toolbar</string>
+    <!-- shown when the volume keys change the scale of the windows -->
+    <string name="scale_percent">Scale %1$d%%</string>
+    <string name="reconnecting_to">Connection lost, reconnecting to %1$s…</string>
+    <string name="reconnecting">Connection lost, reconnecting…</string>
+    <string name="open_windows">Open windows</string>
+    <string name="server_apps">Apps</string>
+    <string name="no_server_apps">The server has not sent any apps. It needs the python3-xdg package, and a menu file in /etc/xdg/menus, ie: from the lxmenu-data package.</string>
+    <string name="add_to_home_screen">Add to home screen</string>
+    <string name="pin_not_supported">Your launcher cannot add icons to the home screen</string>
+    <string name="app_not_found">This window does not belong to an app the server knows</string>
+    <!-- the long label of a home screen icon, ie: "Geany on Rock5b" -->
+    <string name="app_on_server">%1$s on %2$s</string>
+    <string name="starting_app">Starting %1$s…</string>
+    <string name="app_no_window">%1$s has not opened a window</string>
+    <string name="server_removed">This server is no longer on the list</string>
+    <string name="cannot_start_apps">The server does not allow starting apps (start-new-commands is off)</string>
+    <string name="switch_server_title">Switch server?</string>
+    <string name="switch_server_message">You are connected to %1$s. Disconnect from it and connect to %2$s?</string>
+    <string name="switch_server">Switch</string>
 </resources>

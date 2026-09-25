@@ -33,4 +33,11 @@ public interface ConnectionEventListener {
     void onDisconnected(@NonNull ServerDetails serverDetails);
 
     void onConnectionError(@NonNull ServerDetails serverDetails, @NonNull IOException e);
+
+    /**
+     * The connection was lost, and is being restored: {@link #onConnected(ServerDetails)} follows
+     * when it is, or else {@link #onDisconnected(ServerDetails)}.
+     */
+    default void onReconnecting(@NonNull ServerDetails serverDetails) {
+    }
 }

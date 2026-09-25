@@ -133,6 +133,15 @@ public class WindowMetadata extends WindowPacket {
         return Collections.emptySet();
     }
 
+    /**
+     * The WM_CLASS of the window: its instance and class names, or null if it did not change.
+     */
+    @Nullable
+    public List<String> getClassInstance() {
+        final Object value = meta.get("class-instance");
+        return value instanceof List ? asStringList(value) : null;
+    }
+
     public String getTitle() {
         return getAsString(META_TITLE);
     }

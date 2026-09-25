@@ -95,6 +95,15 @@ public class AndroidXpraWindow extends XpraWindow {
         fireOnLost();
     }
 
+    /**
+     * The window screens stay while reconnecting: they are given the window again once the
+     * connection is restored, or close when it is not.
+     */
+    @Override
+    protected void onConnectionLost() {
+        Timber.v("onConnectionLost() windowId=%s", getId());
+    }
+
     @Override
     protected void onMetadataUpdate(WindowMetadata metadata) {
         super.onMetadataUpdate(metadata);
@@ -134,6 +143,11 @@ public class AndroidXpraWindow extends XpraWindow {
     @Override
     public String getTitle() {
         return super.getTitle() != null ? super.getTitle() : "Undefined";
+    }
+
+    @Nullable
+    public Bitmap getIcon() {
+        return icon;
     }
 
     @Nullable
@@ -247,6 +261,16 @@ public class AndroidXpraWindow extends XpraWindow {
     @Nullable
     public AndroidXpraWindow getParent() {
         return parent;
+    }
+
+    /**
+     * Whether the window is drawn over another one, at its own position and size. It is also the
+     * case of the tooltips and menus which the server sends without a parent, and which are
+     * shown over the window on the screen.
+     */
+    @Override
+    public boolean hasParent() {
+        return parent != null || super.hasParent();
     }
 
     public boolean hasParent(int windowId) {

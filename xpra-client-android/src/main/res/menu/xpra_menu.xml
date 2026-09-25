@@ -32,7 +32,13 @@
         android:icon="@drawable/ic_baseline_keyboard_24"
         android:orderInCategory="100"
         android:title="@string/keyboard"
-        app:showAsAction="ifRoom"/>
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_add_to_home_screen"
+        android:icon="@drawable/ic_baseline_add_to_home_screen_24"
+        android:orderInCategory="200"
+        android:title="@string/add_to_home_screen"
+        app:showAsAction="never"/>
     <item
         android:id="@+id/action_close"
         android:icon="@drawable/ic_baseline_close_24"

@@ -17,11 +17,13 @@
  */
 package com.github.jksiezni.xpra.view
 
+import android.app.ActivityManager
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -33,11 +35,15 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import com.github.jksiezni.xpra.R
+import com.github.jksiezni.xpra.apps.AppShortcuts
 import com.github.jksiezni.xpra.client.*
 import com.github.jksiezni.xpra.client.AndroidXpraWindow.XpraWindowListener
 import com.github.jksiezni.xpra.view.Intents.getWindowId
 import com.github.jksiezni.xpra.view.Intents.isValidXpraActivityIntent
+import com.github.jksiezni.xpra.config.ConfigDatabase
 import com.github.jksiezni.xpra.config.ServerDetails
+import io.reactivex.schedulers.Schedulers
+import kotlin.math.roundToInt
 import com.github.jksiezni.xpra.databinding.ActivityXpraBinding
 import timber.log.Timber
 import xpra.client.KeyboardInput
@@ -72,23 +78,69 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
 
         serviceBinderFragment.whenXpraAvailable { api ->
             val rootWindow = api.xpraClient.getWindow(windowId)
-            if (rootWindow == null) {
+            if (rootWindow == null && !api.isReconnecting) {
                 Timber.w("Window with windowId=%d not found", windowId)
                 finish()
                 return@whenXpraAvailable
             }
-            title = rootWindow.title
             api.registerConnectionListener(this)
             api.xpraClient.addEventListener(this)
-            rootWindow.addWindowListener(this)
             // the activity is created again when the device rotates:
             api.xpraClient.updateDesktopSize(resources.displayMetrics)
-            restoreProxyViewHierarchy(rootWindow)
-            val keyboardInput = KeyboardInput(rootWindow)
-            binding.workspaceView.keyboardInput = keyboardInput
-            binding.extraKeys.keyboardInput = keyboardInput
-            binding.workspaceView.requestFocus()
+            if (rootWindow != null) {
+                bindWindow(rootWindow)
+            } else {
+                // ie: opened from the recent apps while the connection is being restored
+                onReconnecting(api.connectionDetails ?: ServerDetails())
+            }
             setResult(RESULT_OK)
+        }
+    }
+
+    /** the window shown, which is a new object after reconnecting */
+    private var boundWindow: AndroidXpraWindow? = null
+
+    /** while reconnecting, the windows which the server sends again are not new ones */
+    @Volatile
+    private var restoring = false
+
+    private fun bindWindow(rootWindow: AndroidXpraWindow) {
+        boundWindow?.removeWindowListener(this)
+        boundWindow = rootWindow
+        title = rootWindow.title
+        updateTaskDescription(rootWindow)
+        rootWindow.addWindowListener(this)
+        binding.workspaceView.removeAllViews()
+        restoreProxyViewHierarchy(rootWindow)
+        val keyboardInput = KeyboardInput(rootWindow)
+        binding.workspaceView.keyboardInput = keyboardInput
+        binding.extraKeys.keyboardInput = keyboardInput
+        binding.workspaceView.requestFocus()
+    }
+
+    override fun onReconnecting(serverDetails: ServerDetails) {
+        restoring = true
+        binding.reconnectingBanner.visibility = View.VISIBLE
+    }
+
+    /**
+     * Gives the window again to the views once the connection is restored, or closes when the
+     * window is gone.
+     */
+    private fun onReconnected(api: XpraAPI) {
+        api.xpraClient.whenStartupComplete {
+            if (isFinishing || isDestroyed) {
+                return@whenStartupComplete
+            }
+            restoring = false
+            binding.reconnectingBanner.visibility = View.GONE
+            val rootWindow = api.xpraClient.getWindow(windowId)
+            if (rootWindow == null) {
+                finish()
+            } else if (rootWindow !== boundWindow) {
+                api.xpraClient.updateDesktopSize(resources.displayMetrics)
+                bindWindow(rootWindow)
+            }
         }
     }
 
@@ -134,8 +186,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     override fun onDestroy() {
         super.onDestroy()
         serviceBinderFragment.whenXpraAvailable { api ->
-            val window = api.xpraClient.getWindow(windowId)
-            window?.removeWindowListener(this)
+            boundWindow?.removeWindowListener(this)
             api.xpraClient.removeEventListener(this)
             api.unregisterConnectionListener(this)
         }
@@ -215,6 +266,10 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
                 toggleKeyboard(binding.workspaceView)
                 true
             }
+            R.id.action_add_to_home_screen -> {
+                addToHomeScreen()
+                true
+            }
             R.id.action_close -> {
                 serviceBinderFragment.whenXpraAvailable { api ->
                     val window = api.xpraClient.getWindow(windowId)
@@ -224,6 +279,90 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    /**
+     * The volume keys change the scale of the windows.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val step = when (event.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> 1
+            KeyEvent.KEYCODE_VOLUME_DOWN -> -1
+            else -> 0
+        }
+        if (step == 0) {
+            return super.dispatchKeyEvent(event)
+        }
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            changeScale(step)
+        }
+        return true
+    }
+
+    private var scaleToast: Toast? = null
+
+    private fun changeScale(step: Int) {
+        serviceBinderFragment.whenXpraAvailable { api ->
+            val client = api.xpraClient
+            val current = (client.scale * 100).roundToInt()
+            val percent = if (step > 0) SCALE_LEVELS.firstOrNull { it > current } else SCALE_LEVELS.lastOrNull { it < current }
+            if (percent != null) {
+                client.changeScale(percent / 100f, resources.displayMetrics)
+                val workspace = binding.workspaceView
+                for (i in 0 until workspace.childCount) {
+                    val view = workspace.getChildAt(i) as? ProxyView ?: continue
+                    view.window.resize(view.width, view.height)
+                    view.requestLayout()
+                }
+                api.connectionDetails?.let { saveScale(it, percent) }
+            }
+            scaleToast?.cancel()
+            scaleToast = Toast.makeText(this, getString(R.string.scale_percent, (client.scale * 100).roundToInt()),
+                Toast.LENGTH_SHORT).also { it.show() }
+        }
+    }
+
+    /**
+     * The scale chosen with the volume keys is kept for the next connections.
+     */
+    private fun saveScale(server: ServerDetails, percent: Int) {
+        server.scalePercent = percent
+        val db = ConfigDatabase.getInstance()
+        db.configs.getById(server.id)
+            .subscribeOn(Schedulers.io())
+            .subscribe({ saved ->
+                saved.scalePercent = percent
+                db.configs.save(saved)
+            }, { Timber.w(it, "Cannot save the scale") })
+    }
+
+    /**
+     * Adds the application of this window to the home screen: the server's menu says how to
+     * start it, or else the command which started it.
+     */
+    private fun addToHomeScreen() {
+        serviceBinderFragment.whenXpraAvailable { api ->
+            val window = api.xpraClient.getWindow(windowId) ?: return@whenXpraAvailable
+            val server = api.connectionDetails ?: return@whenXpraAvailable
+            val app = api.xpraClient.serverApps.firstOrNull { it.matchesWindow(window.windowClasses) }
+            val command = window.command
+            val windowClass = window.windowClasses.lastOrNull { it.isNotEmpty() }
+            when {
+                app != null -> AppShortcuts.pin(this, server, app.name, app.command, app.wmClass,
+                    AppShortcuts.decodeIcon(app) ?: window.icon)
+                !command.isNullOrBlank() -> AppShortcuts.pin(this, server, windowClass ?: window.title,
+                    command, windowClass, window.icon)
+                else -> Toast.makeText(this, R.string.app_not_found, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /**
+     * Each window has a task of its own, like an app: show its title and icon in the recent apps.
+     */
+    @Suppress("DEPRECATION")
+    private fun updateTaskDescription(window: AndroidXpraWindow) {
+        setTaskDescription(ActivityManager.TaskDescription(window.title, window.icon))
     }
 
     private fun toggleKeyboard(view: View?) {
@@ -243,6 +382,10 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     }
 
     override fun onWindowCreated(window: AndroidXpraWindow) {
+        if (restoring) {
+            // the windows the server had: see onReconnected
+            return
+        }
         if (window.hasParent(windowId)) {
             runOnUiThread {
                 val proxyView = ProxyView(this, window)
@@ -260,10 +403,12 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
 
     override fun onMetadataChanged(window: AndroidXpraWindow) {
         title = window.title
+        updateTaskDescription(window)
     }
 
     override fun onIconChanged(window: AndroidXpraWindow) {
         supportActionBar?.setIcon(window.iconDrawable)
+        updateTaskDescription(window)
     }
 
     override fun onLost(window: AndroidXpraWindow) {
@@ -271,6 +416,9 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     }
 
     override fun onConnected(serverDetails: ServerDetails) {
+        if (restoring) {
+            serviceBinderFragment.whenXpraAvailable { api -> onReconnected(api) }
+        }
     }
 
     override fun onDisconnected(serverDetails: ServerDetails) {
@@ -296,6 +444,8 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
 
 
     private companion object {
+        /** the scales the volume keys go through, in percent: see the resolution setting */
+        val SCALE_LEVELS = intArrayOf(100, 125, 150, 175, 200, 225, 250, 275, 300, 350, 400)
         const val PREFS_NAME = "view_settings"
         const val PREF_TOUCHPAD_MODE = "touchpad_mode"
     }

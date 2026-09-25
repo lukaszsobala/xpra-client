@@ -18,36 +18,31 @@
 
 package xpra.protocol.packets;
 
-import java.util.Collection;
+import java.util.Iterator;
 
-import xpra.protocol.IOPacket;
+import xpra.protocol.Packet;
 
 /**
- *
+ * A server setting that changed after the handshake, ie: the application menu ("menu", or
+ * "xdg-menu" on servers older than 6.4).
  */
-public class StartCommand extends IOPacket {
+public class SettingChange extends Packet {
 
-    private final String name;
-    private final String cmd;
-    private final boolean ignore = false;
-    /**
-     * Not shared, servers show the windows of the command only to the client which started it,
-     * as identified by the uuid of its hello, which is new for every connection: the windows
-     * would be hidden after reconnecting.
-     */
-    private final boolean shared = true;
-
-    public StartCommand(String name, String cmd) {
-        super("start-command");
-        this.name = name;
-        this.cmd = cmd;
-    }
+    private String setting;
+    private Object value;
 
     @Override
-    protected void serialize(Collection<Object> elems) {
-        elems.add(name);
-        elems.add(cmd);
-        elems.add(ignore);
-        elems.add(shared);
+    public void deserialize(Iterator<Object> iter) {
+        super.deserialize(iter);
+        setting = asString(iter.next());
+        value = iter.hasNext() ? iter.next() : null;
+    }
+
+    public String getSetting() {
+        return setting;
+    }
+
+    public Object getValue() {
+        return value;
     }
 }

@@ -34,7 +34,7 @@ import java.util.*
 /**
  *
  */
-class TasksAdapter(private val emptyView: TextView) : ListAdapter<TaskItem, TasksAdapter.ViewHolder>(DIFF_CALLBACK) {
+class TasksAdapter(private val onListChanged: (List<TaskItem>) -> Unit) : ListAdapter<TaskItem, TasksAdapter.ViewHolder>(DIFF_CALLBACK) {
 
     private val clickPublisher = PublishSubject.create<TaskItem>()
 
@@ -53,11 +53,7 @@ class TasksAdapter(private val emptyView: TextView) : ListAdapter<TaskItem, Task
     }
 
     override fun onCurrentListChanged(previousList: MutableList<TaskItem>, currentList: MutableList<TaskItem>) {
-        if (currentList.isEmpty()) {
-            emptyView.visibility = View.VISIBLE
-        } else {
-            emptyView.visibility = View.GONE
-        }
+        onListChanged(currentList)
     }
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

@@ -41,6 +41,7 @@ import xpra.protocol.packets.NewWindow;
 import xpra.protocol.packets.NewWindowOverrideRedirect;
 import xpra.protocol.packets.Ping;
 import xpra.protocol.packets.RaiseWindow;
+import xpra.protocol.packets.SettingChange;
 import xpra.protocol.packets.StartupComplete;
 import xpra.protocol.packets.WindowIcon;
 import xpra.protocol.packets.WindowMetadata;
@@ -68,6 +69,7 @@ public class XpraReceiver {
         PACKETS_MAP.put("window-icon", WindowIcon::new);
         PACKETS_MAP.put("configure-override-redirect", ConfigureWindowOverrideRedirect::new);
         PACKETS_MAP.put("raise-window", RaiseWindow::new);
+        PACKETS_MAP.put("setting-change", SettingChange::new);
         //PACKETS_MAP.put("notify_show", NotifyShow::new);
         for (String type : new String[]{"clipboard-token", "clipboard-request", "clipboard-contents",
             "clipboard-contents-none", "clipboard-pending-requests", "clipboard-enable-selections",
@@ -80,7 +82,7 @@ public class XpraReceiver {
      * Packets sent by servers, which this client can safely ignore.
      */
     private static final Set<String> IGNORED_PACKETS = new HashSet<>(Arrays.asList(
-        "encodings", "server-event", "setting-change", "ping_echo", "info-response",
+        "encodings", "server-event", "ping_echo", "info-response",
         "set-cursors", "bell", "eos", "window-move-resize", "window-resized",
         "restack-window", "initiate-moveresize", "pointer-grab", "pointer-ungrab",
         "notify_show", "notify_close", "desktop_size", "control"

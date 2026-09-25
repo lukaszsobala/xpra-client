@@ -23,9 +23,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 
 import xpra.protocol.PictureEncoding;
 import xpra.protocol.XpraReceiver;
@@ -43,15 +46,21 @@ import xpra.protocol.packets.NewWindow;
 import xpra.protocol.packets.NewWindowOverrideRedirect;
 import xpra.protocol.packets.Ping;
 import xpra.protocol.packets.PingEcho;
+import xpra.protocol.packets.PingRequest;
 import xpra.protocol.packets.RaiseWindow;
+import xpra.protocol.packets.SettingChange;
+import xpra.protocol.packets.StartCommand;
 import xpra.protocol.packets.StartupComplete;
 import xpra.protocol.packets.WindowIcon;
 import xpra.protocol.packets.WindowMetadata;
 
 public abstract class XpraClient {
+
+    public static final long PING_INTERVAL_MS = 5000;
     private static final Logger LOGGER = LoggerFactory.getLogger(XpraClient.class);
 
-    private final Map<Integer, XpraWindow> windows = new HashMap<>();
+    // read by the UI, while the packets change it
+    private final Map<Integer, XpraWindow> windows = new ConcurrentHashMap<>();
 
     private final PictureEncoding[] pictureEncodings;
     private final XpraKeyboard keyboard;
@@ -82,6 +91,12 @@ public abstract class XpraClient {
      * It is set to true, when the hello packet is received from a Server.
      */
     private volatile boolean handshakeComplete;
+    private volatile boolean startNewCommands;
+    private volatile boolean startupComplete;
+    private volatile boolean lastDisconnectedByServer;
+    private volatile String lastDisconnectReason;
+    private Timer pingTimer;
+    private volatile List<ServerApp> serverApps = Collections.emptyList();
     private ClipboardSync clipboard;
 
 
@@ -204,10 +219,25 @@ public abstract class XpraClient {
                 LOGGER.info("raise-window: " + response.getWindowId());
             }
         });
+        receiver.registerHandler(SettingChange.class, new XpraReceiver.PacketHandler<SettingChange>() {
+            @Override
+            public void process(SettingChange packet) {
+                final String setting = packet.getSetting();
+                if ("menu".equals(setting) || "xdg-menu".equals(setting)) {
+                    serverApps = Collections.unmodifiableList(ServerApp.fromMenu(packet.getValue()));
+                    LOGGER.info("The server has " + serverApps.size() + " applications");
+                    onServerAppsChanged(serverApps);
+                } else if ("start-new-commands".equals(setting)) {
+                    startNewCommands = asBoolean(packet.getValue());
+                }
+            }
+        });
         receiver.registerHandler(StartupComplete.class, new XpraReceiver.PacketHandler<StartupComplete>() {
             @Override
             public void process(StartupComplete response) throws IOException {
                 LOGGER.info(response.toString());
+                startupComplete = true;
+                onStartupComplete();
             }
         });
     }
@@ -247,12 +277,93 @@ public abstract class XpraClient {
 
     protected void onWindowMetadataUpdated(XpraWindow window) {}
 
+    /**
+     * Whether the last connection was closed by the server, ie: it was shut down, or another
+     * client took over the session, see {@link #getLastDisconnectReason()}.
+     */
+    public boolean wasLastDisconnectedByServer() {
+        return lastDisconnectedByServer;
+    }
+
+    public String getLastDisconnectReason() {
+        return lastDisconnectReason;
+    }
+
+    /**
+     * Pings the server regularly: its answers keep the connection busy, so a connection which
+     * stays silent is a dead one, ie: after the network changed.
+     */
+    private synchronized void startPings() {
+        stopPings();
+        pingTimer = new Timer("XpraPing", true);
+        pingTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                final XpraSender s = sender;
+                if (s != null) {
+                    s.send(new PingRequest());
+                }
+            }
+        }, PING_INTERVAL_MS, PING_INTERVAL_MS);
+    }
+
+    private synchronized void stopPings() {
+        if (pingTimer != null) {
+            pingTimer.cancel();
+            pingTimer = null;
+        }
+    }
+
+    /**
+     * Called when the server has sent all the windows it had, after connecting.
+     */
+    protected void onStartupComplete() {}
+
+    public boolean isStartupComplete() {
+        return startupComplete;
+    }
+
+    /**
+     * Called when the server sent its applications, see {@link #getServerApps()}.
+     */
+    protected void onServerAppsChanged(List<ServerApp> apps) {}
+
+    /**
+     * The applications the server can start, from its menu.
+     */
+    public List<ServerApp> getServerApps() {
+        return serverApps;
+    }
+
+    /**
+     * Whether the server lets this client start applications.
+     */
+    public boolean canStartCommands() {
+        return startNewCommands;
+    }
+
+    /**
+     * Starts an application on the server.
+     */
+    public void startCommand(String name, String command) {
+        final XpraSender s = sender;
+        if (s != null) {
+            s.send(new StartCommand(name, command));
+        }
+    }
+
+    private static boolean asBoolean(Object value) {
+        return value instanceof Boolean ? (Boolean) value : value instanceof Number && ((Number) value).intValue() != 0;
+    }
+
     protected void onCursorUpdate(CursorPacket cursorPacket) {
         LOGGER.info(cursorPacket.toString());
     }
 
     public void onConnect(XpraSender sender) {
         this.sender = sender;
+        lastDisconnectedByServer = false;
+        lastDisconnectReason = null;
         final HelloRequest hello = new HelloRequest(desktopWidth, desktopHeight, keyboard, encoding, pictureEncodings);
         hello.setDpi(dpi, xdpi, ydpi);
         if (username != null && !username.isEmpty()) {
@@ -266,13 +377,19 @@ public abstract class XpraClient {
     }
 
     public void onDisconnect() {
+        stopPings();
+        lastDisconnectedByServer = disconnectedByServer;
+        lastDisconnectReason = disconnectReason;
         for (XpraWindow w : windows.values()) {
-            w.onStop();
+            w.onConnectionLost();
         }
         windows.clear();
         disconnectedByServer = false;
         disconnectReason = null;
         handshakeComplete = false;
+        startNewCommands = false;
+        startupComplete = false;
+        serverApps = Collections.emptyList();
         sender = null;
         if (clipboard != null) {
             clipboard.setSender(null);
@@ -367,6 +484,18 @@ public abstract class XpraClient {
         public void process(HelloResponse response) throws IOException {
             LOGGER.info("Connected to Xpra server version " + response.getVersion());
             handshakeComplete = true;
+            startPings();
+            final Object startCommands = response.getCaps().get("start-new-commands");
+            startNewCommands = asBoolean(startCommands);
+            // older servers may send their menu with the hello, not in a "setting-change":
+            for (String key : new String[]{"menu", "xdg-menu"}) {
+                final List<ServerApp> apps = ServerApp.fromMenu(response.getCaps().get(key));
+                if (!apps.isEmpty()) {
+                    serverApps = Collections.unmodifiableList(apps);
+                    onServerAppsChanged(serverApps);
+                    break;
+                }
+            }
             LOGGER.debug(response.toString());
         }
     }

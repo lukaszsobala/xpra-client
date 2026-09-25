@@ -119,6 +119,8 @@ dependencies {
 
     // Recycler View
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    // the icons of the server's applications are often SVG images
+    implementation 'com.caverock:androidsvg-aar:1.4'
     //implementation 'androidx.recyclerview:recyclerview-selection:1.0.0'
 
     def room_version = "2.7.1"
