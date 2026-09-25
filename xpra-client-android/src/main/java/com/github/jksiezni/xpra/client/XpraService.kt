@@ -154,6 +154,17 @@ class XpraService : Service() {
         }
     }
 
+    fun disconnect() {
+        userDisconnected = true
+        cancelReconnect()
+        if (reconnecting && connector?.isRunning != true) {
+            // between two attempts: nothing to close
+            serverDetails?.let { onConnectionEnded(it, null, lost = false) }
+        } else {
+            connector?.disconnect()
+        }
+    }
+
     /**
      * Whether the connection was lost, rather than closed on purpose, by the user or by the
      * server (ie: when another client took over the session, or it was shut down). Servers

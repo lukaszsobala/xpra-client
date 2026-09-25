@@ -144,6 +144,86 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         }
     }
 
+    /**
+     * Landscape screens are short: go full screen, with the system bars shown by a swipe from
+     * the edge, and hide the toolbar behind a small handle.
+     */
+    private fun setupLandscape() {
+        if (resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            return
+        }
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+        binding.toolbarHandle.visibility = View.VISIBLE
+        setToolbarShown(false)
+        binding.toolbarHandle.setOnClickListener {
+            setToolbarShown(binding.toolbar.visibility != View.VISIBLE)
+        }
+    }
+
+    private fun setToolbarShown(shown: Boolean) {
+        binding.toolbar.visibility = if (shown) View.VISIBLE else View.GONE
+        binding.toolbarHandle.setIconResource(
+            if (shown) R.drawable.ic_baseline_expand_less_24 else R.drawable.ic_baseline_expand_more_24)
+        binding.toolbarHandle.contentDescription = getString(if (shown) R.string.hide_toolbar else R.string.show_toolbar)
+    }
+
+    private fun restoreProxyViewHierarchy(rootWindow: AndroidXpraWindow) {
+        binding.workspaceView.addView(ProxyView(this, rootWindow))
+        val list = mutableListOf<AndroidXpraWindow>()
+        list.addAll(rootWindow.children)
+        while (list.isNotEmpty()) {
+            val child = list.removeAt(0)
+            val proxyView = ProxyView(this, child)
+            binding.workspaceView.addView(proxyView)
+            child.addWindowListener(XpraWindowHandler(proxyView))
+            list.addAll(child.children)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceBinderFragment.whenXpraAvailable { api ->
+            boundWindow?.removeWindowListener(this)
+            api.xpraClient.removeEventListener(this)
+            api.unregisterConnectionListener(this)
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            // ie: back from the app where some text was copied
+            sendClipboard()
+        }
+    }
+
+    private val clipChangedListener = ClipboardManager.OnPrimaryClipChangedListener { sendClipboard() }
+
+    override fun onResume() {
+        super.onResume()
+        serviceBinderFragment.whenXpraAvailable { api -> api.xpraClient.activeWindowId = windowId }
+        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).addPrimaryClipChangedListener(clipChangedListener)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).removePrimaryClipChangedListener(clipChangedListener)
+    }
+
+    private fun sendClipboard() {
+        serviceBinderFragment.whenXpraAvailable { api ->
+            AndroidClipboard.sendToServer(this, api.xpraClient.clipboard)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Timber.i("onNewIntent(): %s", getIntent())
+    }
+
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.xpra_menu, menu)
