@@ -30,6 +30,7 @@ import com.android.grafika.gles.*
 import timber.log.Timber
 import xpra.protocol.PictureEncoding
 import xpra.protocol.packets.DrawPacket
+import xpra.video.H264Headers
 import java.nio.ByteBuffer
 
 /**
@@ -197,7 +198,9 @@ class GLComposer(
                 callback.onComposed(packet, DECODE_ERROR)
                 return
             }
-            stream = VideoStream.create(packet.encoding, size[0], size[1], handler) { onVideoFrame(windowId, it) }
+            stream = VideoStream.create(packet.encoding, size[0], size[1], fullRange(packet), handler) {
+                onVideoFrame(windowId, it)
+            }
             if (stream == null) {
                 callback.onComposed(packet, DECODE_ERROR)
                 return
@@ -205,8 +208,16 @@ class GLComposer(
             stream.onError = { failed, _ -> onVideoError(windowId, failed) }
             videoStreams[windowId] = stream
         }
+        val fullRange = fullRange(packet)
+        if (packet.encoding == PictureEncoding.h264 && fullRange != null) {
+            // the servers' x264 describes the colours wrongly: see H264Headers
+            packet.data = H264Headers.fixColours(packet.data, fullRange)
+        }
         stream.decode(packet)
     }
+
+    /** whether the frame is in full range, or null if the server does not say */
+    private fun fullRange(packet: DrawPacket): Boolean? = packet.options["full-range"] as? Boolean
 
     private fun onVideoFrame(windowId: Int, stream: VideoStream) {
         if (videoStreams[windowId] !== stream) {

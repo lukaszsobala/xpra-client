@@ -169,7 +169,7 @@ internal class VideoStream private constructor(
          *
          * @return the stream, or null if the device cannot decode it
          */
-        fun create(encoding: PictureEncoding, width: Int, height: Int, handler: Handler,
+        fun create(encoding: PictureEncoding, width: Int, height: Int, fullRange: Boolean?, handler: Handler,
                    onFrame: (VideoStream) -> Unit): VideoStream? {
             val decoder = VideoDecoders.decoders[encoding] ?: return null
             val video = decoder.capabilities.videoCapabilities
@@ -196,6 +196,11 @@ internal class VideoStream private constructor(
                 val format = MediaFormat.createVideoFormat(decoder.mime, width, height)
                 // keyframes can be large:
                 format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, maxOf(width * height * 3 / 2, 256 * 1024))
+                // for the streams which do not describe their colours:
+                if (fullRange != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    format.setInteger(MediaFormat.KEY_COLOR_RANGE,
+                        if (fullRange) MediaFormat.COLOR_RANGE_FULL else MediaFormat.COLOR_RANGE_LIMITED)
+                }
                 // a remote desktop wants each frame as soon as possible:
                 format.setInteger(MediaFormat.KEY_PRIORITY, 0)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
