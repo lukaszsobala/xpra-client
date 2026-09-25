@@ -92,6 +92,13 @@
             android:entries="@array/resolution_names"
             android:entryValues="@array/resolution_values"/>
 
+        <ListPreference
+            android:key="app_window_timeout"
+            app:useSimpleSummaryProvider="true"
+            android:title="@string/app_window_timeout"
+            android:entries="@array/app_window_timeout_names"
+            android:entryValues="@array/app_window_timeout_values"/>
+
     </PreferenceCategory>
 
 </PreferenceScreen>

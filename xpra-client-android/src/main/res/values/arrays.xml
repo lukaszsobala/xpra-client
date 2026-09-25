@@ -65,4 +65,20 @@
         <item>350</item>
         <item>400</item>
     </string-array>
+
+    <!-- how long to wait for the window of an app started from the phone, in seconds (0 = forever) -->
+    <string-array name="app_window_timeout_names">
+        <item>30 seconds</item>
+        <item>1 minute</item>
+        <item>2 minutes</item>
+        <item>5 minutes</item>
+        <item>Never give up</item>
+    </string-array>
+    <string-array name="app_window_timeout_values">
+        <item>30</item>
+        <item>60</item>
+        <item>120</item>
+        <item>300</item>
+        <item>0</item>
+    </string-array>
 </resources>

@@ -66,6 +66,14 @@
     <string name="scale_percent">Scale %1$d%%</string>
     <string name="reconnecting_to">Connection lost, reconnecting to %1$s…</string>
     <string name="reconnecting">Connection lost, reconnecting…</string>
+    <string name="app_window_timeout">Wait for the window of a started app</string>
+    <string name="background_running_title">Run in the background</string>
+    <string name="background_running_message">Android\'s battery optimisations can cut the network of apps in the background, ie: while the screen is off, which drops the connection to the server. Your apps keep running on the server, and the connection is restored, but allowing this app to run in the background avoids the interruptions.\n\nSome phones, ie: Samsung ones, also put apps to sleep: see the battery settings of the app.</string>
+    <string name="background_running_allowed">Already allowed: the settings let you change it back</string>
+    <string name="background_running_unavailable">This phone has no battery optimisation settings</string>
+    <string name="allow">Allow</string>
+    <string name="not_now">Not now</string>
+    <string name="dont_ask_again">Don\'t ask again</string>
     <string name="open_windows">Open windows</string>
     <string name="server_apps">Apps</string>
     <string name="no_server_apps">The server has not sent any apps. It needs the python3-xdg package, and a menu file in /etc/xdg/menus, ie: from the lxmenu-data package.</string>

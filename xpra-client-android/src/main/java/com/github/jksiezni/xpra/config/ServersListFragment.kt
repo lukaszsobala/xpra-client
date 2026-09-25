@@ -28,6 +28,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.github.jksiezni.xpra.ConnectXpraActivity
 import com.github.jksiezni.xpra.R
+import com.github.jksiezni.xpra.client.BackgroundRunning
 import com.github.jksiezni.xpra.client.ConnectionEventListener
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.connection.ActiveConnectionFragment
@@ -46,6 +47,7 @@ class ServersListFragment : Fragment() {
     private val connectLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             openActiveConnection()
+            BackgroundRunning.askOnce(requireActivity())
         }
     }
 
@@ -122,6 +124,16 @@ class ServersListFragment : Fragment() {
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.servers_menu, menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_background_running -> {
+                BackgroundRunning.request(requireActivity())
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     private fun openActiveConnection() {
