@@ -67,6 +67,9 @@
     <string name="reconnecting_to">Connection lost, reconnecting to %1$s…</string>
     <string name="reconnecting">Connection lost, reconnecting…</string>
     <string name="app_window_timeout">Wait for the window of a started app</string>
+    <string name="app_window_timeout_hint">In seconds, 0 to never give up</string>
+    <string name="app_window_timeout_seconds">%1$d seconds</string>
+    <string name="app_window_timeout_forever">Never give up</string>
     <string name="background_running_title">Run in the background</string>
     <string name="background_running_message">Android\'s battery optimisations can cut the network of apps in the background, ie: while the screen is off, which drops the connection to the server. Your apps keep running on the server, and the connection is restored, but allowing this app to run in the background avoids the interruptions.\n\nSome phones, ie: Samsung ones, also put apps to sleep: see the battery settings of the app.</string>
     <string name="background_running_allowed">Already allowed: the settings let you change it back</string>

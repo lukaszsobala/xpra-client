@@ -70,6 +70,15 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
         findPreference<Preference>(ServerDetailsDataStore.PREF_HOST)?.summaryProvider = EditTextSummaryProvider(getString(R.string.enter_unique_name))
         findPreference<Preference>(ServerDetailsDataStore.PREF_USERNAME)?.summaryProvider = EditTextSummaryProvider(getString(R.string.enter_unique_name))
         findPreference<Preference>(ServerDetailsDataStore.PREF_DISPLAY_ID)?.summaryProvider = DisplayIdSummaryProvider(getString(R.string.automatic))
+        findPreference<Preference>(ServerDetailsDataStore.PREF_APP_WINDOW_TIMEOUT)?.summaryProvider =
+            SummaryProvider<EditTextPreference> { preference ->
+                val seconds = preference.text?.toIntOrNull() ?: ServerDetails.DEFAULT_APP_WINDOW_TIMEOUT
+                if (seconds == ServerDetails.WAIT_FOREVER) {
+                    getString(R.string.app_window_timeout_forever)
+                } else {
+                    getString(R.string.app_window_timeout_seconds, seconds)
+                }
+            }
 
         findPreference<ListPreference>(ServerDetailsDataStore.PREF_CONNECTION_TYPE)?.let {
             it.setOnPreferenceChangeListener { _, newValue ->
