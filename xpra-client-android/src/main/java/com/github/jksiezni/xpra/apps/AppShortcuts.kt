@@ -27,6 +27,7 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.config.ServerDetails
+import timber.log.Timber
 import xpra.client.ServerApp
 import java.security.MessageDigest
 
@@ -89,6 +90,26 @@ object AppShortcuts {
 
     fun pin(context: Context, server: ServerDetails, app: ServerApp) {
         pin(context, server, app.name, app.command, app.wmClass, decodeIcon(app))
+    }
+
+    /**
+     * Gives a new icon to the home screen icon of an application, if it has one.
+     */
+    fun updateIcon(context: Context, serverId: Int, app: ServerApp, icon: Bitmap) {
+        try {
+            val id = shortcutId(serverId, app.command)
+            val pinned = ShortcutManagerCompat.getShortcuts(context, ShortcutManagerCompat.FLAG_MATCH_PINNED)
+                .firstOrNull { it.id == id } ?: return
+            val builder = ShortcutInfoCompat.Builder(context, id)
+                .setShortLabel(pinned.shortLabel)
+                .setIcon(IconCompat.createWithAdaptiveBitmap(AppIcons.adaptiveIcon(context, app.name, icon)))
+                .setIntent(launchIntent(context, serverId, app))
+            pinned.longLabel?.let { builder.setLongLabel(it) }
+            ShortcutManagerCompat.updateShortcuts(context, listOf(builder.build()))
+        } catch (e: Exception) {
+            // ie: the updates are rate limited
+            Timber.w(e, "Cannot update the icon of %s", app.name)
+        }
     }
 
     /**

@@ -23,6 +23,7 @@ import android.os.Looper
 import android.util.DisplayMetrics
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.github.jksiezni.xpra.apps.WindowIcons
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.gl.GLComposer
 import timber.log.Timber
@@ -60,6 +61,7 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
      * Applies the per-connection settings, before connecting.
      */
     fun applySettings(serverDetails: ServerDetails) {
+        serverId = serverDetails.id
         val dm = context.resources.displayMetrics
         scale = if (serverDetails.scalePercent > 0) serverDetails.scalePercent / 100f else dm.density
         updateDesktopSize(dm)
@@ -90,6 +92,32 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
     }
 
     /**
+     * The server of the connection, see [applySettings].
+     */
+    private var serverId = -1
+
+    /**
+     * The icons of the windows are also the icons of their applications, when the server sent
+     * none with its menu.
+     */
+    private val iconLearner = object : AndroidXpraWindow.XpraWindowListener {
+        override fun onMetadataChanged(window: AndroidXpraWindow) {
+            learnIcon(window)
+        }
+
+        override fun onIconChanged(window: AndroidXpraWindow) {
+            learnIcon(window)
+        }
+
+        override fun onLost(window: AndroidXpraWindow) {
+        }
+    }
+
+    private fun learnIcon(window: AndroidXpraWindow) {
+        WindowIcons.learn(context, serverId, serverApps, window)
+    }
+
+    /**
      * The window on the screen, ie: of the activity in the foreground.
      */
     @Volatile
@@ -110,6 +138,11 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
 
     override fun onWindowStarted(window: XpraWindow) {
         super.onWindowStarted(window)
+        val androidWindow = window as AndroidXpraWindow
+        if (!androidWindow.hasParent()) {
+            androidWindow.addWindowListener(iconLearner)
+            mainHandler.post { learnIcon(androidWindow) }
+        }
         windowsLiveData.postValue(windows.filter { !it.hasParent() })
         listeners.forEach { it.onWindowCreated(window as AndroidXpraWindow) }
     }
@@ -144,6 +177,7 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
 
     override fun onServerAppsChanged(apps: List<ServerApp>) {
         serverAppsLiveData.postValue(apps)
+        mainHandler.post { windows.forEach { learnIcon(it as AndroidXpraWindow) } }
     }
 
     /**

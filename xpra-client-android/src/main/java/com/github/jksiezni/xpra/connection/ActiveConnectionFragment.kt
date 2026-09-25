@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.ConcatAdapter
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.apps.AppShortcuts
 import com.github.jksiezni.xpra.apps.ServerAppsAdapter
+import com.github.jksiezni.xpra.apps.WindowIcons
 import com.github.jksiezni.xpra.client.AndroidXpraWindow
 import com.github.jksiezni.xpra.client.ConnectionEventListener
 import com.github.jksiezni.xpra.view.Intents
@@ -114,7 +115,13 @@ class ActiveConnectionFragment : Fragment() {
                 service.xpraAPI?.connectionDetails?.let { server ->
                     AppShortcuts.pin(requireContext(), server, app.name, app.command, app.wmClass, icon)
                 }
+            },
+            fallbackIcon = { app ->
+                service.xpraAPI?.connectionDetails?.let { server ->
+                    WindowIcons.get(requireContext(), server.id, app.command)
+                }
             })
+        WindowIcons.changed.observe(viewLifecycleOwner) { appsAdapter.refreshIcons() }
         binding.windowsRecyclerView.adapter = ConcatAdapter(windowsHeader, adapter, appsHeader, appsHint, appsAdapter)
         tasksAdapter = adapter
         this.appsAdapter = appsAdapter

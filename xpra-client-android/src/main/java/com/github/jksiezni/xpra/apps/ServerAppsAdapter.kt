@@ -36,7 +36,9 @@ import java.util.IdentityHashMap
  */
 class ServerAppsAdapter(
     private val onLaunch: (ServerApp) -> Unit,
-    private val onPin: (ServerApp, Bitmap?) -> Unit
+    private val onPin: (ServerApp, Bitmap?) -> Unit,
+    /** the icon of an application without one from the server, ie: the icon of its window */
+    private val fallbackIcon: (ServerApp) -> Bitmap? = { null }
 ) : ListAdapter<ServerApp, ServerAppsAdapter.ViewHolder>(DIFF_CALLBACK) {
 
     /** Decoding the icons, SVG ones especially, is too slow to do it on every bind. */
@@ -49,7 +51,7 @@ class ServerAppsAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val app = getItem(position)
-        val icon = icons.getOrPut(app) { AppShortcuts.decodeIcon(app) }
+        val icon = icons.getOrPut(app) { AppShortcuts.decodeIcon(app) ?: fallbackIcon(app) }
         holder.titleView.text = app.name
         holder.categoryView.text = app.category
         holder.categoryView.visibility = if (app.category.isNullOrEmpty()) View.GONE else View.VISIBLE
@@ -60,6 +62,14 @@ class ServerAppsAdapter(
         }
         holder.itemView.setOnClickListener { onLaunch(app) }
         holder.pinButton.setOnClickListener { onPin(app, icon) }
+    }
+
+    /**
+     * Shows the icons which the applications got since, see [fallbackIcon].
+     */
+    fun refreshIcons() {
+        icons.clear()
+        notifyItemRangeChanged(0, itemCount)
     }
 
     override fun onCurrentListChanged(previousList: MutableList<ServerApp>, currentList: MutableList<ServerApp>) {
