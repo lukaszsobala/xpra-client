@@ -202,7 +202,9 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
     }
 
     override fun onDisconnect() {
+        windows.forEach { (it as AndroidXpraWindow).release() }
         super.onDisconnect()
+        windowsLiveData.postValue(emptyList())
         synchronized(startupActions) {
             startupActions.clear()
         }

@@ -21,6 +21,7 @@ package xpra.network;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 
@@ -33,6 +34,14 @@ import xpra.protocol.packets.Disconnect;
 
 public class TcpXpraConnector extends XpraConnector implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(TcpXpraConnector.class);
+
+    /**
+     * A connection without any packet for this long is dead: without this, a connection lost
+     * without being closed, ie: when the network changed, would only be noticed hours later.
+     */
+    public static final int READ_TIMEOUT_MS = 30_000;
+    /** without it, connecting to an unreachable server waits for minutes, ie: while reconnecting */
+    public static final int CONNECT_TIMEOUT_MS = 15_000;
 
     private final String host;
     private final int port;
@@ -78,10 +87,13 @@ public class TcpXpraConnector extends XpraConnector implements Runnable {
     public void run() {
         Socket socket = null;
         try {
-            socket = new Socket(host, port);
+            socket = new Socket();
+            socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
             InputStream is = socket.getInputStream();
             OutputStream os = socket.getOutputStream();
             socket.setKeepAlive(true);
+            // the server and our pings keep a working connection busy, see XpraClient.PING_INTERVAL_MS
+            socket.setSoTimeout(READ_TIMEOUT_MS);
             client.onConnect(new xpra.protocol.XpraSender(os));
 
             PacketReader reader = new PacketReader(is);

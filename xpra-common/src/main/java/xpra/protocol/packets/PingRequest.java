@@ -23,31 +23,21 @@ import java.util.Collection;
 import xpra.protocol.IOPacket;
 
 /**
- *
+ * A ping to the server, which answers with a "ping_echo": the connection is then never silent
+ * for long while it works, see {@link xpra.network.TcpXpraConnector#READ_TIMEOUT_MS}.
  */
-public class StartCommand extends IOPacket {
+public class PingRequest extends IOPacket {
 
-    private final String name;
-    private final String cmd;
-    private final boolean ignore = false;
-    /**
-     * Not shared, servers show the windows of the command only to the client which started it,
-     * as identified by the uuid of its hello, which is new for every connection: the windows
-     * would be hidden after reconnecting.
-     */
-    private final boolean shared = true;
+    private final long time = System.nanoTime() / 1_000_000;
+    private final long wallTime = System.currentTimeMillis();
 
-    public StartCommand(String name, String cmd) {
-        super("start-command");
-        this.name = name;
-        this.cmd = cmd;
+    public PingRequest() {
+        super("ping");
     }
 
     @Override
     protected void serialize(Collection<Object> elems) {
-        elems.add(name);
-        elems.add(cmd);
-        elems.add(ignore);
-        elems.add(shared);
+        elems.add(time);
+        elems.add(wallTime);
     }
 }

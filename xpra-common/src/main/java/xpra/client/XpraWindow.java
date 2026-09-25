@@ -147,6 +147,14 @@ public abstract class XpraWindow {
 	protected void onStop() {
 	    mapped = false;
     }
+
+    /**
+     * Called instead of {@link #onStop()} when the connection is lost: the window most likely
+     * still exists on the server, and comes back after reconnecting.
+     */
+    protected void onConnectionLost() {
+        onStop();
+    }
 	
 	protected void onMetadataUpdate(WindowMetadata metadata) {
         final String title = metadata.getTitle();

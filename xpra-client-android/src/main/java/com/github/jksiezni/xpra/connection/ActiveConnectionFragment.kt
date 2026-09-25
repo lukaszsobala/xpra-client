@@ -73,7 +73,7 @@ class ActiveConnectionFragment : Fragment() {
         super.onStart()
         service.whenXpraAvailable { api ->
             api.registerConnectionListener(connectionListener)
-            if (!api.isConnected) {
+            if (!api.isConnected && !api.isReconnecting) {
                 exit()
             }
         }

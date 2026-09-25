@@ -78,106 +78,70 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
 
         serviceBinderFragment.whenXpraAvailable { api ->
             val rootWindow = api.xpraClient.getWindow(windowId)
-            if (rootWindow == null) {
+            if (rootWindow == null && !api.isReconnecting) {
                 Timber.w("Window with windowId=%d not found", windowId)
                 finish()
                 return@whenXpraAvailable
             }
-            title = rootWindow.title
-            updateTaskDescription(rootWindow)
             api.registerConnectionListener(this)
             api.xpraClient.addEventListener(this)
-            rootWindow.addWindowListener(this)
             // the activity is created again when the device rotates:
             api.xpraClient.updateDesktopSize(resources.displayMetrics)
-            restoreProxyViewHierarchy(rootWindow)
-            val keyboardInput = KeyboardInput(rootWindow)
-            binding.workspaceView.keyboardInput = keyboardInput
-            binding.extraKeys.keyboardInput = keyboardInput
-            binding.workspaceView.requestFocus()
+            if (rootWindow != null) {
+                bindWindow(rootWindow)
+            } else {
+                // ie: opened from the recent apps while the connection is being restored
+                onReconnecting(api.connectionDetails ?: ServerDetails())
+            }
             setResult(RESULT_OK)
         }
     }
 
+    /** the window shown, which is a new object after reconnecting */
+    private var boundWindow: AndroidXpraWindow? = null
+
+    /** while reconnecting, the windows which the server sends again are not new ones */
+    @Volatile
+    private var restoring = false
+
+    private fun bindWindow(rootWindow: AndroidXpraWindow) {
+        boundWindow?.removeWindowListener(this)
+        boundWindow = rootWindow
+        title = rootWindow.title
+        updateTaskDescription(rootWindow)
+        rootWindow.addWindowListener(this)
+        binding.workspaceView.removeAllViews()
+        restoreProxyViewHierarchy(rootWindow)
+        val keyboardInput = KeyboardInput(rootWindow)
+        binding.workspaceView.keyboardInput = keyboardInput
+        binding.extraKeys.keyboardInput = keyboardInput
+        binding.workspaceView.requestFocus()
+    }
+
+    override fun onReconnecting(serverDetails: ServerDetails) {
+        restoring = true
+        binding.reconnectingBanner.visibility = View.VISIBLE
+    }
+
     /**
-     * Landscape screens are short: go full screen, with the system bars shown by a swipe from
-     * the edge, and hide the toolbar behind a small handle.
+     * Gives the window again to the views once the connection is restored, or closes when the
+     * window is gone.
      */
-    private fun setupLandscape() {
-        if (resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE) {
-            return
+    private fun onReconnected(api: XpraAPI) {
+        api.xpraClient.whenStartupComplete {
+            if (isFinishing || isDestroyed) {
+                return@whenStartupComplete
+            }
+            restoring = false
+            binding.reconnectingBanner.visibility = View.GONE
+            val rootWindow = api.xpraClient.getWindow(windowId)
+            if (rootWindow == null) {
+                finish()
+            } else if (rootWindow !== boundWindow) {
+                api.xpraClient.updateDesktopSize(resources.displayMetrics)
+                bindWindow(rootWindow)
+            }
         }
-        WindowCompat.getInsetsController(window, window.decorView).apply {
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            hide(WindowInsetsCompat.Type.systemBars())
-        }
-        binding.toolbarHandle.visibility = View.VISIBLE
-        setToolbarShown(false)
-        binding.toolbarHandle.setOnClickListener {
-            setToolbarShown(binding.toolbar.visibility != View.VISIBLE)
-        }
-    }
-
-    private fun setToolbarShown(shown: Boolean) {
-        binding.toolbar.visibility = if (shown) View.VISIBLE else View.GONE
-        binding.toolbarHandle.setIconResource(
-            if (shown) R.drawable.ic_baseline_expand_less_24 else R.drawable.ic_baseline_expand_more_24)
-        binding.toolbarHandle.contentDescription = getString(if (shown) R.string.hide_toolbar else R.string.show_toolbar)
-    }
-
-    private fun restoreProxyViewHierarchy(rootWindow: AndroidXpraWindow) {
-        binding.workspaceView.addView(ProxyView(this, rootWindow))
-        val list = mutableListOf<AndroidXpraWindow>()
-        list.addAll(rootWindow.children)
-        while (list.isNotEmpty()) {
-            val child = list.removeAt(0)
-            val proxyView = ProxyView(this, child)
-            binding.workspaceView.addView(proxyView)
-            child.addWindowListener(XpraWindowHandler(proxyView))
-            list.addAll(child.children)
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        serviceBinderFragment.whenXpraAvailable { api ->
-            val window = api.xpraClient.getWindow(windowId)
-            window?.removeWindowListener(this)
-            api.xpraClient.removeEventListener(this)
-            api.unregisterConnectionListener(this)
-        }
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            // ie: back from the app where some text was copied
-            sendClipboard()
-        }
-    }
-
-    private val clipChangedListener = ClipboardManager.OnPrimaryClipChangedListener { sendClipboard() }
-
-    override fun onResume() {
-        super.onResume()
-        serviceBinderFragment.whenXpraAvailable { api -> api.xpraClient.activeWindowId = windowId }
-        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).addPrimaryClipChangedListener(clipChangedListener)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).removePrimaryClipChangedListener(clipChangedListener)
-    }
-
-    private fun sendClipboard() {
-        serviceBinderFragment.whenXpraAvailable { api ->
-            AndroidClipboard.sendToServer(this, api.xpraClient.clipboard)
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        Timber.i("onNewIntent(): %s", getIntent())
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -338,6 +302,10 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     }
 
     override fun onWindowCreated(window: AndroidXpraWindow) {
+        if (restoring) {
+            // the windows the server had: see onReconnected
+            return
+        }
         if (window.hasParent(windowId)) {
             runOnUiThread {
                 val proxyView = ProxyView(this, window)
@@ -368,6 +336,9 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     }
 
     override fun onConnected(serverDetails: ServerDetails) {
+        if (restoring) {
+            serviceBinderFragment.whenXpraAvailable { api -> onReconnected(api) }
+        }
     }
 
     override fun onDisconnected(serverDetails: ServerDetails) {

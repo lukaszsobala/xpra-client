@@ -26,6 +26,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 import xpra.protocol.PictureEncoding;
@@ -44,6 +46,7 @@ import xpra.protocol.packets.NewWindow;
 import xpra.protocol.packets.NewWindowOverrideRedirect;
 import xpra.protocol.packets.Ping;
 import xpra.protocol.packets.PingEcho;
+import xpra.protocol.packets.PingRequest;
 import xpra.protocol.packets.RaiseWindow;
 import xpra.protocol.packets.SettingChange;
 import xpra.protocol.packets.StartCommand;
@@ -52,6 +55,8 @@ import xpra.protocol.packets.WindowIcon;
 import xpra.protocol.packets.WindowMetadata;
 
 public abstract class XpraClient {
+
+    public static final long PING_INTERVAL_MS = 5000;
     private static final Logger LOGGER = LoggerFactory.getLogger(XpraClient.class);
 
     // read by the UI, while the packets change it
@@ -88,6 +93,9 @@ public abstract class XpraClient {
     private volatile boolean handshakeComplete;
     private volatile boolean startNewCommands;
     private volatile boolean startupComplete;
+    private volatile boolean lastDisconnectedByServer;
+    private volatile String lastDisconnectReason;
+    private Timer pingTimer;
     private volatile List<ServerApp> serverApps = Collections.emptyList();
     private ClipboardSync clipboard;
 
@@ -270,6 +278,43 @@ public abstract class XpraClient {
     protected void onWindowMetadataUpdated(XpraWindow window) {}
 
     /**
+     * Whether the last connection was closed by the server, ie: it was shut down, or another
+     * client took over the session, see {@link #getLastDisconnectReason()}.
+     */
+    public boolean wasLastDisconnectedByServer() {
+        return lastDisconnectedByServer;
+    }
+
+    public String getLastDisconnectReason() {
+        return lastDisconnectReason;
+    }
+
+    /**
+     * Pings the server regularly: its answers keep the connection busy, so a connection which
+     * stays silent is a dead one, ie: after the network changed.
+     */
+    private synchronized void startPings() {
+        stopPings();
+        pingTimer = new Timer("XpraPing", true);
+        pingTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                final XpraSender s = sender;
+                if (s != null) {
+                    s.send(new PingRequest());
+                }
+            }
+        }, PING_INTERVAL_MS, PING_INTERVAL_MS);
+    }
+
+    private synchronized void stopPings() {
+        if (pingTimer != null) {
+            pingTimer.cancel();
+            pingTimer = null;
+        }
+    }
+
+    /**
      * Called when the server has sent all the windows it had, after connecting.
      */
     protected void onStartupComplete() {}
@@ -317,6 +362,8 @@ public abstract class XpraClient {
 
     public void onConnect(XpraSender sender) {
         this.sender = sender;
+        lastDisconnectedByServer = false;
+        lastDisconnectReason = null;
         final HelloRequest hello = new HelloRequest(desktopWidth, desktopHeight, keyboard, encoding, pictureEncodings);
         hello.setDpi(dpi, xdpi, ydpi);
         if (username != null && !username.isEmpty()) {
@@ -330,8 +377,11 @@ public abstract class XpraClient {
     }
 
     public void onDisconnect() {
+        stopPings();
+        lastDisconnectedByServer = disconnectedByServer;
+        lastDisconnectReason = disconnectReason;
         for (XpraWindow w : windows.values()) {
-            w.onStop();
+            w.onConnectionLost();
         }
         windows.clear();
         disconnectedByServer = false;
@@ -434,6 +484,7 @@ public abstract class XpraClient {
         public void process(HelloResponse response) throws IOException {
             LOGGER.info("Connected to Xpra server version " + response.getVersion());
             handshakeComplete = true;
+            startPings();
             final Object startCommands = response.getCaps().get("start-new-commands");
             startNewCommands = asBoolean(startCommands);
             // older servers may send their menu with the hello, not in a "setting-change":

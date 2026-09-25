@@ -44,6 +44,9 @@ import com.jcraft.jsch.UserInfo;
 public class SshXpraConnector extends XpraConnector implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(SshXpraConnector.class);
 
+    /** without it, connecting to an unreachable server waits for minutes, ie: while reconnecting */
+    private static final int CONNECT_TIMEOUT_MS = 15_000;
+
     private static final String[] REMOTE_XPRA = {
         "xpra", "$XDG_RUNTIME_DIR/xpra/run-xpra", "/usr/local/bin/xpra", "~/.xpra/run-xpra"
     };
@@ -141,7 +144,7 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
             session.setServerAliveInterval(1000);
             session.setServerAliveCountMax(15);
             logger.debug("Keep-alive interval={}, maxAliveCount={}", session.getServerAliveInterval(), session.getServerAliveCountMax());
-            session.connect();
+            session.connect(CONNECT_TIMEOUT_MS);
             final Channel channel = session.openChannel("exec");
             ((ChannelExec) channel).setCommand(getProxyCommand(display));
             ((ChannelExec) channel).setErrStream(stderr, true);

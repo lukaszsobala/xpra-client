@@ -43,6 +43,11 @@ public interface XpraAPI {
 
     boolean isConnected();
 
+    /**
+     * Whether a lost connection is being restored, see {@link ConnectionEventListener#onReconnecting}.
+     */
+    boolean isReconnecting();
+
     void registerConnectionListener(ConnectionEventListener listener);
 
     void unregisterConnectionListener(ConnectionEventListener listener);

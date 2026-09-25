@@ -68,6 +68,31 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp" />
 
+        <!-- while a lost connection is being restored: the windows are frozen meanwhile -->
+        <LinearLayout
+            android:id="@+id/reconnectingBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="?attr/colorSurfaceContainerHigh"
+            android:clickable="true"
+            android:focusable="false"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:indeterminate="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:text="@string/reconnecting"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+        </LinearLayout>
+
     </FrameLayout>
 
     <!-- shown above the on-screen keyboard -->

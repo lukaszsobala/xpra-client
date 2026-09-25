@@ -95,6 +95,15 @@ public class AndroidXpraWindow extends XpraWindow {
         fireOnLost();
     }
 
+    /**
+     * The window screens stay while reconnecting: they are given the window again once the
+     * connection is restored, or close when it is not.
+     */
+    @Override
+    protected void onConnectionLost() {
+        Timber.v("onConnectionLost() windowId=%s", getId());
+    }
+
     @Override
     protected void onMetadataUpdate(WindowMetadata metadata) {
         super.onMetadataUpdate(metadata);
