@@ -31,7 +31,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 /**
  *
  */
-@Database(entities = {ServerDetails.class}, version = 5, exportSchema = false)
+@Database(entities = {ServerDetails.class}, version = 6, exportSchema = false)
 @TypeConverters(ConvertersKt.class)
 public abstract class ConfigDatabase extends RoomDatabase {
 
@@ -69,10 +69,20 @@ public abstract class ConfigDatabase extends RoomDatabase {
         }
     };
 
+    /**
+     * Adds the video decoding setting, on by default.
+     */
+    static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE ServerDetails ADD COLUMN videoDecoding INTEGER NOT NULL DEFAULT 1");
+        }
+    };
+
     public static void setup(Application app) {
         if (instance == null) {
             instance = Room.databaseBuilder(app, ConfigDatabase.class, "config.db")
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .fallbackToDestructiveMigration()
                 .build();
         }

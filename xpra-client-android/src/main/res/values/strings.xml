@@ -77,6 +77,8 @@
     <string name="allow">Allow</string>
     <string name="not_now">Not now</string>
     <string name="dont_ask_again">Don\'t ask again</string>
+    <string name="video_decoding">Use video compression</string>
+    <string name="video_decoding_summary">For what changes a lot, ie: scrolling or videos: smoother, with less data, but text can be blurred for a moment. This device decodes: %1$s</string>
     <string name="open_windows">Open windows</string>
     <string name="server_apps">Apps</string>
     <string name="no_server_apps">The server has not sent any apps. It needs the python3-xdg package, and a menu file in /etc/xdg/menus, ie: from the lxmenu-data package.</string>

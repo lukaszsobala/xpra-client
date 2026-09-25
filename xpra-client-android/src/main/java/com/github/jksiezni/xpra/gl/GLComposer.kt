@@ -45,6 +45,12 @@ class GLComposer(
 
     private val drawTargets: MutableMap<Int, GLDrawTarget> = mutableMapOf()
 
+    /** the video stream of each window, if any */
+    private val videoStreams: MutableMap<Int, VideoStream> = mutableMapOf()
+    private val videoMatrix = FloatArray(16)
+    /** draws the video frames into the textures of the windows */
+    private var framebuffer = 0
+
     private val baseSurface: EglSurfaceBase by lazy {
         if (eglCore.supportsSurfacelessContext()) {
             return@lazy EglSurfaceBase(eglCore)
@@ -65,6 +71,7 @@ class GLComposer(
                 Timber.v("MSG_REMOVE_DRAW_TARGET $windowId")
                 baseSurface.makeCurrent()
                 drawTargets.remove(windowId)
+                closeVideo(windowId)
             }
             MSG_ADD_SURFACE_TEX -> {
                 val windowId = msg.arg1
@@ -94,6 +101,7 @@ class GLComposer(
     }
 
     private lateinit var frameRect: FullFrameRect
+    private lateinit var videoFrameRect: FullFrameRect
 
     init {
         start()
@@ -103,9 +111,12 @@ class GLComposer(
         baseSurface.makeCurrent()
         val program = Texture2dProgram.create(Texture2dProgram.ProgramType.TEXTURE_2D)
         frameRect = FullFrameRect(program)
+        videoFrameRect = FullFrameRect(Texture2dProgram.create(Texture2dProgram.ProgramType.TEXTURE_EXT))
     }
 
     override fun onDestroyGL(eglCore: EglCore) {
+        videoStreams.values.forEach { it.release() }
+        videoStreams.clear()
         eglCore.makeNothingCurrent()
         baseSurface.releaseEglSurface()
     }
@@ -131,10 +142,14 @@ class GLComposer(
     }
 
     private fun composePacket(packet: DrawPacket) {
+        if (packet.encoding.isVideo) {
+            decodeVideo(packet)
+            return
+        }
         val glWindow = drawTargets[packet.windowId]
         if (glWindow != null) {
             // process packet
-            val startTime = SystemClock.uptimeMillis()
+            val startTime = SystemClock.elapsedRealtimeNanos()
             glWindow.makeCurrent()
             if (glWindow.validateTextureSize(packet.windowSize, packet.x + packet.w, packet.y + packet.h)
                 && !glWindow.coversTexture(packet.x, packet.y, packet.w, packet.h)) {
@@ -151,11 +166,125 @@ class GLComposer(
                 return
             }
             render(glWindow)
-            callback.onComposed(packet, SystemClock.uptimeMillis() - startTime)
+            callback.onComposed(packet, elapsedMicros(startTime))
         } else {
             Timber.w("No surface to compose a drawing for window id=%d", packet.windowId)
         }
     }
+
+    /**
+     * Decodes a frame of a video stream: it is drawn once decoded, see [onVideoFrame].
+     */
+    private fun decodeVideo(packet: DrawPacket) {
+        val windowId = packet.windowId
+        val glWindow = drawTargets[windowId]
+        if (glWindow == null) {
+            Timber.w("No surface to decode a video frame for window id=%d", windowId)
+            return
+        }
+        glWindow.makeCurrent()
+        val size = packet.videoSize
+        var stream = videoStreams[windowId]
+        if (stream != null && (stream.encoding != packet.encoding || stream.width != size[0] ||
+                stream.height != size[1] || packet.frame == 0)) {
+            // a new stream: the previous one ended
+            closeVideo(windowId)
+            stream = null
+        }
+        if (stream == null) {
+            if (packet.frame > 0) {
+                // the middle of a stream cannot be decoded: the server starts a new one
+                callback.onComposed(packet, DECODE_ERROR)
+                return
+            }
+            stream = VideoStream.create(packet.encoding, size[0], size[1], handler) { onVideoFrame(windowId, it) }
+            if (stream == null) {
+                callback.onComposed(packet, DECODE_ERROR)
+                return
+            }
+            stream.onError = { failed, _ -> onVideoError(windowId, failed) }
+            videoStreams[windowId] = stream
+        }
+        stream.decode(packet)
+    }
+
+    private fun onVideoFrame(windowId: Int, stream: VideoStream) {
+        if (videoStreams[windowId] !== stream) {
+            return
+        }
+        val glWindow = drawTargets[windowId]
+        if (glWindow != null) glWindow.makeCurrent() else baseSurface.makeCurrent()
+        stream.surfaceTexture.updateTexImage()
+        stream.surfaceTexture.getTransformMatrix(videoMatrix)
+        val shown = stream.takeShown(stream.surfaceTexture.timestamp)
+        val last = shown.lastOrNull()?.first
+        if (glWindow != null && last != null && last.isPainted) {
+            try {
+                if (glWindow.validateTextureSize(last.windowSize, last.x + last.w, last.y + last.h)
+                    && !glWindow.coversTexture(last.x, last.y, last.w, last.h)) {
+                    onContentLost(windowId)
+                }
+                drawVideoFrame(glWindow.texture, last, stream.texture)
+                // back to the viewport of the window surface:
+                glWindow.makeCurrent()
+                render(glWindow)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to draw a video frame of window %d", windowId)
+                shown.forEach { callback.onComposed(it.first, DECODE_ERROR) }
+                closeVideo(windowId)
+                return
+            }
+        }
+        shown.forEach { (packet, micros) -> callback.onComposed(packet, micros) }
+    }
+
+    /**
+     * Stretches the frame, which the server may have scaled down, over the area of the update.
+     * The texture of the window has the top of the window in its first row, like the frame
+     * rendered with the transform of its surface texture, so the frame is drawn upright.
+     */
+    private fun drawVideoFrame(windowTexture: Int, packet: DrawPacket, videoTexture: Int) {
+        if (framebuffer == 0) {
+            val framebuffers = IntArray(1)
+            GLES20.glGenFramebuffers(1, framebuffers, 0)
+            framebuffer = framebuffers[0]
+        }
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebuffer)
+        try {
+            GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_TEXTURE_2D, windowTexture, 0)
+            val status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
+            if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+                throw IllegalStateException("incomplete framebuffer: $status")
+            }
+            GLES20.glViewport(packet.x, packet.y, packet.w, packet.h)
+            videoFrameRect.drawFrame(videoTexture, videoMatrix)
+            GlUtil.checkGlError("drawVideoFrame")
+        } finally {
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        }
+    }
+
+    /**
+     * Tells the server that the frames failed: it then starts a new stream, with a refresh.
+     */
+    private fun onVideoError(windowId: Int, stream: VideoStream) {
+        if (videoStreams[windowId] === stream) {
+            stream.takePending().forEach { callback.onComposed(it, DECODE_ERROR) }
+            closeVideo(windowId)
+        }
+    }
+
+    private fun closeVideo(windowId: Int) {
+        videoStreams.remove(windowId)?.let { stream ->
+            // the frames of an ended stream, which will never be shown, are not errors:
+            stream.takePending().forEach { callback.onComposed(it, 1) }
+            stream.release()
+        }
+    }
+
+    private fun elapsedMicros(startNs: Long): Long =
+        ((SystemClock.elapsedRealtimeNanos() - startNs) / 1000).coerceAtLeast(1)
 
     private fun render(glDrawTarget: GLDrawTarget) {
         if (!glDrawTarget.isEglSurface(baseSurface)) {
@@ -196,11 +325,17 @@ class GLComposer(
     }
 
     fun interface ComposeCallback {
+        /**
+         * @param decodeTime - in microseconds, or negative for a failure
+         */
         fun onComposed(packet: DrawPacket, decodeTime: Long)
     }
 
     companion object {
         private val RGBA_BITMAP = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 }
+
+        /** what the server expects as the decoding time of a frame which failed */
+        private const val DECODE_ERROR = -1L
 
         const val MSG_DRAW_PACKET = 1
         const val MSG_ADD_SURFACE_TEX = 2

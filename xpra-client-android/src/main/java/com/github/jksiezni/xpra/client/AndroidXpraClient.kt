@@ -26,6 +26,7 @@ import androidx.lifecycle.MutableLiveData
 import com.github.jksiezni.xpra.apps.WindowIcons
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.gl.GLComposer
+import com.github.jksiezni.xpra.gl.VideoDecoders
 import timber.log.Timber
 import xpra.client.ServerApp
 import xpra.client.XpraClient
@@ -66,6 +67,11 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
         scale = if (serverDetails.scalePercent > 0) serverDetails.scalePercent / 100f else dm.density
         updateDesktopSize(dm)
         setPictureEncoding(serverDetails.pictureEncoding)
+        if (serverDetails.videoDecoding) {
+            setVideoEncodings(VideoDecoders.helloEncodings(), VideoDecoders.maxSize())
+        } else {
+            setVideoEncodings(emptyMap(), null)
+        }
         if (serverDetails.clipboardSharing) {
             enableClipboard(AndroidClipboard(context))
         } else {

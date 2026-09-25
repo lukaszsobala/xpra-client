@@ -25,7 +25,14 @@ public enum PictureEncoding {
     jpeg,
     png,
     pngP("png/P"),
-    pngL("png/L");
+    pngL("png/L"),
+    // video, see isVideo():
+    h264,
+    h265,
+    hevc,
+    av1,
+    vp8,
+    vp9;
 
     private static final PictureEncoding[] values = values();
     private final String code;
@@ -36,6 +43,23 @@ public enum PictureEncoding {
 
     PictureEncoding(String code) {
         this.code = code;
+    }
+
+    /**
+     * Whether the pictures are the frames of a video stream, which depend on the previous ones.
+     */
+    public boolean isVideo() {
+        switch (this) {
+            case h264:
+            case h265:
+            case hevc:
+            case av1:
+            case vp8:
+            case vp9:
+                return true;
+            default:
+                return false;
+        }
     }
 
     @Override

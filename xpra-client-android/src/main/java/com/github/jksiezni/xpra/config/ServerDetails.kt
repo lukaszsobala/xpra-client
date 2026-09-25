@@ -67,6 +67,12 @@ class ServerDetails : Serializable {
     @ColumnInfo(defaultValue = "30")
     var appWindowTimeout: Int = DEFAULT_APP_WINDOW_TIMEOUT
 
+    /**
+     * Whether the server may send video streams, decoded by the device, for what changes a lot.
+     */
+    @ColumnInfo(defaultValue = "1")
+    var videoDecoding: Boolean = true
+
     val url: String
         get() {
             val builder = StringBuilder(type.toString().lowercase(Locale.getDefault()))
@@ -95,12 +101,12 @@ class ServerDetails : Serializable {
                 username == that.username &&
                 sshPrivateKeyFile == that.sshPrivateKeyFile && pictureEncoding == that.pictureEncoding &&
                 scalePercent == that.scalePercent && clipboardSharing == that.clipboardSharing &&
-                appWindowTimeout == that.appWindowTimeout
+                appWindowTimeout == that.appWindowTimeout && videoDecoding == that.videoDecoding
     }
 
     override fun hashCode(): Int {
         return Objects.hash(id, name, type, host, port, displayId, username, sshPrivateKeyFile, pictureEncoding, scalePercent, clipboardSharing,
-            appWindowTimeout)
+            appWindowTimeout, videoDecoding)
     }
 
     companion object {

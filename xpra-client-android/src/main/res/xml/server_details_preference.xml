@@ -80,6 +80,11 @@
             android:entryValues="@array/picture_encoding_values"/>
 
         <SwitchPreferenceCompat
+            android:key="video_decoding"
+            android:defaultValue="true"
+            android:title="@string/video_decoding" />
+
+        <SwitchPreferenceCompat
             android:key="clipboard_sharing"
             android:defaultValue="true"
             android:title="@string/clipboard_sharing"
