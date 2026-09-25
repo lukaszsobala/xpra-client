@@ -109,6 +109,10 @@ class ZoomLayout @JvmOverloads constructor(context: Context, attrs: AttributeSet
      */
     fun setZoom(newZoom: Float, left: Float, top: Float) {
         val child = getChildAt(0) ?: return
+        if (newZoom != zoom) {
+            // what the child draws at a fixed size, ie: the touchpad pointer, follows the zoom
+            child.invalidate()
+        }
         zoom = newZoom
         child.pivotX = 0f
         child.pivotY = 0f
