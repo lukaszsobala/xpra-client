@@ -92,6 +92,8 @@ public abstract class XpraClient {
      */
     private volatile boolean handshakeComplete;
     private volatile boolean startNewCommands;
+    private Map<String, Map<String, Object>> videoEncodings = Collections.emptyMap();
+    private int[] videoMaxSize;
     private volatile boolean startupComplete;
     private volatile boolean lastDisconnectedByServer;
     private volatile String lastDisconnectReason;
@@ -365,6 +367,7 @@ public abstract class XpraClient {
         lastDisconnectedByServer = false;
         lastDisconnectReason = null;
         final HelloRequest hello = new HelloRequest(desktopWidth, desktopHeight, keyboard, encoding, pictureEncodings);
+        hello.setVideo(videoEncodings, videoMaxSize);
         hello.setDpi(dpi, xdpi, ydpi);
         if (username != null && !username.isEmpty()) {
             hello.setUsername(username);
@@ -467,6 +470,15 @@ public abstract class XpraClient {
      */
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    /**
+     * The video encodings to accept from the next connection, see {@link HelloRequest#setVideo},
+     * or none to only receive pictures.
+     */
+    public void setVideoEncodings(Map<String, Map<String, Object>> encodings, int[] maxSize) {
+        this.videoEncodings = encodings;
+        this.videoMaxSize = maxSize;
     }
 
     public void setPictureEncoding(PictureEncoding pictureEncoding) {

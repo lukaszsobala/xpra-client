@@ -108,11 +108,12 @@ public class HelloRequest extends xpra.protocol.IOPacket {
         encoding.put("rgb_lz4", true);
         encoding.put("transparency", false);
         encoding.put("icons", Collections.singletonMap("max_size", CAPS_MAX_ICON_SIZE));
+        final Map<String, Object> cscModes = new LinkedHashMap<>();
         if (coreEncodings.contains(PictureEncoding.jpeg.toString())) {
             // the input formats our jpeg decoder handles:
-            encoding.put("full_csc_modes", Collections.singletonMap(PictureEncoding.jpeg.toString(),
-                Arrays.asList("BGRX", "BGRA", "YUV420P")));
+            cscModes.put(PictureEncoding.jpeg.toString(), Arrays.asList("BGRX", "BGRA", "YUV420P"));
         }
+        encoding.put("full_csc_modes", cscModes);
         if (defaultEncoding != null) {
             encoding.put("setting", toOption(defaultEncoding.toString()));
         }
@@ -125,6 +126,52 @@ public class HelloRequest extends xpra.protocol.IOPacket {
         caps.put("display", display);
 
         setKeyboard(keyboard);
+    }
+
+    /**
+     * Accepts video streams for the parts of the windows which change a lot, ie: while
+     * scrolling, instead of a picture for each change.
+     *
+     * @param encodings - the video encodings, ie: "h264", with their options, ie: their
+     *                  "score-delta", which makes the server prefer some of them
+     * @param maxSize - the largest video the client decodes, or null
+     */
+    @SuppressWarnings("unchecked")
+    public void setVideo(Map<String, Map<String, Object>> encodings, int[] maxSize) {
+        if (encodings.isEmpty()) {
+            return;
+        }
+        final Map<String, Object> encoding = (Map<String, Object>) caps.get("encoding");
+        final List<String> core = new ArrayList<>((List<String>) encoding.get("core"));
+        final List<String> options = new ArrayList<>((List<String>) encoding.get("options"));
+        final Map<String, Object> cscModes = new LinkedHashMap<>((Map<String, Object>) encoding.get("full_csc_modes"));
+        for (Map.Entry<String, Map<String, Object>> e : encodings.entrySet()) {
+            if (!core.contains(e.getKey())) {
+                core.add(e.getKey());
+                options.add(e.getKey());
+            }
+            // decoders output any YUV 4:2:0 picture
+            cscModes.put(e.getKey(), Collections.singletonList("YUV420P"));
+            encoding.put(e.getKey(), e.getValue());
+        }
+        encoding.put("core", core);
+        encoding.put("options", options);
+        encoding.put("full_csc_modes", cscModes);
+        // every frame can be shown as soon as it is decoded:
+        encoding.put("video_b_frames", Collections.emptyList());
+        if (maxSize != null) {
+            encoding.put("video_max_size", Arrays.asList(maxSize[0], maxSize[1]));
+        }
+        // the server chooses the encoding of each update, ie: video for what changes a lot,
+        // unless a video encoding was chosen:
+        if (!encodings.containsKey(String.valueOf(encoding.get("setting")))) {
+            encoding.put("setting", "auto");
+        }
+    }
+
+    /** for the tests */
+    Map<String, Object> getCaps() {
+        return caps;
     }
 
     /**

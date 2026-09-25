@@ -60,6 +60,19 @@ class ServerDetails : Serializable {
     @ColumnInfo(defaultValue = "1")
     var clipboardSharing: Boolean = true
 
+    /**
+     * How long to wait for the window of an app started from the phone, in seconds, or
+     * [WAIT_FOREVER]: slow servers may take longer to start big apps.
+     */
+    @ColumnInfo(defaultValue = "30")
+    var appWindowTimeout: Int = DEFAULT_APP_WINDOW_TIMEOUT
+
+    /**
+     * Whether the server may send video streams, decoded by the device, for what changes a lot.
+     */
+    @ColumnInfo(defaultValue = "1")
+    var videoDecoding: Boolean = true
+
     val url: String
         get() {
             val builder = StringBuilder(type.toString().lowercase(Locale.getDefault()))
@@ -87,14 +100,18 @@ class ServerDetails : Serializable {
                 host == that.host &&
                 username == that.username &&
                 sshPrivateKeyFile == that.sshPrivateKeyFile && pictureEncoding == that.pictureEncoding &&
-                scalePercent == that.scalePercent && clipboardSharing == that.clipboardSharing
+                scalePercent == that.scalePercent && clipboardSharing == that.clipboardSharing &&
+                appWindowTimeout == that.appWindowTimeout && videoDecoding == that.videoDecoding
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(id, name, type, host, port, displayId, username, sshPrivateKeyFile, pictureEncoding, scalePercent, clipboardSharing)
+        return Objects.hash(id, name, type, host, port, displayId, username, sshPrivateKeyFile, pictureEncoding, scalePercent, clipboardSharing,
+            appWindowTimeout, videoDecoding)
     }
 
     companion object {
         const val SCALE_AUTOMATIC = 0
+        const val DEFAULT_APP_WINDOW_TIMEOUT = 30
+        const val WAIT_FOREVER = 0
     }
 }

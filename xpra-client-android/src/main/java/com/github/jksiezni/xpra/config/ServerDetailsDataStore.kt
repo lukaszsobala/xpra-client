@@ -42,6 +42,8 @@ class ServerDetailsDataStore(
         const val PREF_PICTURE_ENC = "picture_encoding"
         const val PREF_RESOLUTION = "resolution"
         const val PREF_CLIPBOARD = "clipboard_sharing"
+        const val PREF_APP_WINDOW_TIMEOUT = "app_window_timeout"
+        const val PREF_VIDEO = "video_decoding"
     }
 
     override fun getString(key: String, defValue: String?): String? {
@@ -54,6 +56,7 @@ class ServerDetailsDataStore(
             PREF_DISPLAY_ID -> serverDetails.displayId.toString()
             PREF_PICTURE_ENC -> serverDetails.pictureEncoding.name
             PREF_RESOLUTION -> serverDetails.scalePercent.toString()
+            PREF_APP_WINDOW_TIMEOUT -> serverDetails.appWindowTimeout.toString()
             else -> throw UnsupportedOperationException("$key is not supported")
         }
     }
@@ -68,12 +71,15 @@ class ServerDetailsDataStore(
             PREF_DISPLAY_ID -> serverDetails.displayId = value?.toInt() ?: -1
             PREF_PICTURE_ENC -> serverDetails.pictureEncoding = enumValueOf(value ?: PictureEncoding.jpeg.name)
             PREF_RESOLUTION -> serverDetails.scalePercent = value?.toIntOrNull() ?: ServerDetails.SCALE_AUTOMATIC
+            PREF_APP_WINDOW_TIMEOUT -> serverDetails.appWindowTimeout =
+                value?.toIntOrNull() ?: ServerDetails.DEFAULT_APP_WINDOW_TIMEOUT
         }
     }
 
     override fun getBoolean(key: String, defValue: Boolean): Boolean {
         return when (key) {
             PREF_CLIPBOARD -> serverDetails.clipboardSharing
+            PREF_VIDEO -> serverDetails.videoDecoding
             else -> throw UnsupportedOperationException("$key is not supported")
         }
     }
@@ -81,6 +87,7 @@ class ServerDetailsDataStore(
     override fun putBoolean(key: String, value: Boolean) {
         when (key) {
             PREF_CLIPBOARD -> serverDetails.clipboardSharing = value
+            PREF_VIDEO -> serverDetails.videoDecoding = value
         }
     }
 

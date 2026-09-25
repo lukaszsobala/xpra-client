@@ -137,6 +137,36 @@ public class DrawPacket extends WindowPacket {
         return encoding == PictureEncoding.rgb24 ? "RGB" : "RGBX";
     }
 
+    /**
+     * The size of a video frame, which the server may have scaled down from the size of the
+     * area to paint: the frame is then stretched over it.
+     */
+    public int[] getVideoSize() {
+        final Object size = options.get("scaled_size");
+        if (size instanceof List && ((List<?>) size).size() >= 2) {
+            final List<?> list = (List<?>) size;
+            return new int[]{((Number) list.get(0)).intValue(), ((Number) list.get(1)).intValue()};
+        }
+        return new int[]{w, h};
+    }
+
+    /**
+     * The number of a video frame in its stream, from 0 for the first one, or -1.
+     */
+    public int getFrame() {
+        final Object frame = options.get("frame");
+        return frame instanceof Number ? ((Number) frame).intValue() : -1;
+    }
+
+    /**
+     * Whether the (video) frame must be shown: some are only decoded, to keep the stream going,
+     * when newer pictures were painted already.
+     */
+    public boolean isPainted() {
+        final Object paint = options.get("paint");
+        return paint == null || asBoolean(paint);
+    }
+
     public String getOption(String key) {
         return asString(options.get(key));
     }

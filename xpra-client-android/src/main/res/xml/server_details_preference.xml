@@ -80,6 +80,11 @@
             android:entryValues="@array/picture_encoding_values"/>
 
         <SwitchPreferenceCompat
+            android:key="video_decoding"
+            android:defaultValue="true"
+            android:title="@string/video_decoding" />
+
+        <SwitchPreferenceCompat
             android:key="clipboard_sharing"
             android:defaultValue="true"
             android:title="@string/clipboard_sharing"
@@ -91,6 +96,12 @@
             android:title="@string/resolution"
             android:entries="@array/resolution_names"
             android:entryValues="@array/resolution_values"/>
+
+        <EditTextPreference
+            android:inputType="number"
+            android:key="app_window_timeout"
+            android:title="@string/app_window_timeout"
+            android:dialogMessage="@string/app_window_timeout_hint" />
 
     </PreferenceCategory>
 

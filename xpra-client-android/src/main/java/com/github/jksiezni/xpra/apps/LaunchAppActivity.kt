@@ -198,7 +198,11 @@ class LaunchAppActivity : AppCompatActivity(), ConnectionEventListener, XpraEven
         waitingForWindow = true
         client.addEventListener(this)
         client.startCommand(appName, command)
-        handler.postDelayed(windowTimeout, WINDOW_TIMEOUT_MS)
+        // see the server's setting: big apps may start slowly
+        val timeout = xpra.connectionDetails?.appWindowTimeout ?: ServerDetails.DEFAULT_APP_WINDOW_TIMEOUT
+        if (timeout != ServerDetails.WAIT_FOREVER) {
+            handler.postDelayed(windowTimeout, timeout * 1000L)
+        }
     }
 
     private fun isAppWindow(window: AndroidXpraWindow) = !window.hasParent() && !window.isOverrideRedirect
@@ -245,7 +249,6 @@ class LaunchAppActivity : AppCompatActivity(), ConnectionEventListener, XpraEven
     }
 
     private companion object {
-        const val WINDOW_TIMEOUT_MS = 30_000L
         const val RECONNECT_DELAY_MS = 250L
         const val RECONNECT_ATTEMPTS = 20
     }
