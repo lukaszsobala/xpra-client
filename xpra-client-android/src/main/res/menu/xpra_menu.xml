@@ -40,6 +40,11 @@
         android:title="@string/add_to_home_screen"
         app:showAsAction="never"/>
     <item
+        android:id="@+id/action_how_to_use"
+        android:orderInCategory="210"
+        android:title="@string/how_to_use"
+        app:showAsAction="never"/>
+    <item
         android:id="@+id/action_close"
         android:icon="@drawable/ic_baseline_close_24"
         android:orderInCategory="100"

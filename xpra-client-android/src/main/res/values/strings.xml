@@ -113,4 +113,21 @@
     <string name="switch_server_title">Switch server?</string>
     <string name="switch_server_message">You are connected to %1$s. Disconnect from it and connect to %2$s?</string>
     <string name="switch_server">Switch</string>
+    <!-- How to use -->
+    <string name="how_to_use">How to use</string>
+    <string name="help_intro">This app shows the apps of an Xpra server: Xpra must already be running on the computer you connect to, ie: started with <tt>xpra start :100 --start=xterm</tt>. Connect to it over SSH, with 100 as the display, or add <tt>--bind-tcp=0.0.0.0:10000</tt> to connect over TCP, which is not encrypted. See <a href="https://xpra.org">xpra.org</a>.</string>
+    <string name="help_servers">Servers and apps</string>
+    <string name="help_add_server">Add a server. Tap it to connect, then "open" shows its windows and apps.</string>
+    <string name="help_pin_app">Add an app to the home screen: its icon connects and starts it in one tap. The ⋮ menu of a window can add its app too.</string>
+    <string name="help_start_command">On a connected server, + starts any command.</string>
+    <string name="help_touch">Touch</string>
+    <string name="help_direct_touch">Direct touch: tap to click, drag to drag, long press to right-click, drag two fingers to scroll.</string>
+    <string name="help_touchpad">Touchpad: a finger moves the pointer. Tap to click, tap twice to double-click, tap then drag to drag, long press or tap with two fingers to right-click. This button switches between the two.</string>
+    <string name="help_zoom">Zoom</string>
+    <string name="help_pinch">Pinch to magnify the screen, ie: to read small text, and move the fingers to look around. Pinch back out to see all of it.</string>
+    <string name="help_volume_keys">The volume keys make the windows bigger or smaller, and sharp, rather than magnified. The size is kept for the server, and can also be set in its settings (Resolution).</string>
+    <string name="help_keyboard_title">Keyboard and windows</string>
+    <string name="help_keyboard">Shows the keyboard, with a row of Esc, Tab, Ctrl, Alt, the arrows and more. Tap Ctrl then a key for Ctrl+key; long press Ctrl to hold it down.</string>
+    <string name="help_close">Closes the window, on the server too.</string>
+    <string name="help_background">If the connection drops while the screen is off: ⋮ → Run in the background.</string>
 </resources>

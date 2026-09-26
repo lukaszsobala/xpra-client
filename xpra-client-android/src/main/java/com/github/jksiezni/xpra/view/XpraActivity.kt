@@ -45,6 +45,7 @@ import com.github.jksiezni.xpra.config.ServerDetails
 import io.reactivex.schedulers.Schedulers
 import kotlin.math.roundToInt
 import com.github.jksiezni.xpra.databinding.ActivityXpraBinding
+import com.github.jksiezni.xpra.help.HowToUse
 import timber.log.Timber
 import xpra.client.KeyboardInput
 import xpra.client.ServerApp
@@ -274,6 +275,10 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             }
             R.id.action_add_to_home_screen -> {
                 addToHomeScreen()
+                true
+            }
+            R.id.action_how_to_use -> {
+                HowToUse.show(this)
                 true
             }
             R.id.action_close -> {

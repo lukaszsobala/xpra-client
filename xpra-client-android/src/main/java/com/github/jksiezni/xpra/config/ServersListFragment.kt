@@ -33,6 +33,7 @@ import com.github.jksiezni.xpra.client.ConnectionEventListener
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.connection.ActiveConnectionFragment
 import com.github.jksiezni.xpra.databinding.ServersFragmentBinding
+import com.github.jksiezni.xpra.help.HowToUse
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import timber.log.Timber
@@ -78,6 +79,7 @@ class ServersListFragment : Fragment() {
         Timber.v("onViewCreated")
         val floatingButton = view.findViewById<View>(R.id.floatingButton)
         floatingButton.setOnClickListener { newConnection() }
+        binding.howToUseButton.setOnClickListener { HowToUse.show(requireContext()) }
         binding.serversList.adapter = adapter
         adapter.secondaryAction.subscribe { item ->
             if (adapter.isConnected(item)) {

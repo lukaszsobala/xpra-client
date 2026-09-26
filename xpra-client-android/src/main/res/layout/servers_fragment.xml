@@ -28,6 +28,8 @@
 	    android:scrollbars="vertical"
 	    android:layout_width="match_parent"
 	    android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="88dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/connection_list_item"/>
 
@@ -38,6 +40,17 @@
 	    android:layout_gravity="center"
 	    android:text="@string/no_connections_label"
 	    android:textAppearance="?android:attr/textAppearanceMedium" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/howToUseButton"
+        style="@style/Widget.Material3.Button.TextButton.Icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start|bottom"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="32dp"
+        android:text="@string/how_to_use"
+        app:icon="@drawable/ic_baseline_help_outline_24" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/floatingButton"
