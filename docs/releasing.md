@@ -63,3 +63,7 @@ the servers).
 - **Store listing**: the icon is [play/icon-512.png](play/icon-512.png). Play also needs a
   feature graphic (1024×500) and at least 2 phone screenshots. Describe the app as an
   unofficial client for Xpra, and link the source code, as the GPL asks.
+- **The Android robot** in the icon is licensed under CC BY 3.0, which needs an attribution: end
+  the description with "The Android robot is reproduced or modified from work created and
+  shared by Google and used according to terms described in the Creative Commons 3.0
+  Attribution License."

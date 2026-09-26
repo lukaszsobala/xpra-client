@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The Xpra logo, redrawn for adaptive icons: the logo stays within the safe zone,
-     a circle of 66dp in the middle of the 108dp icon. Drawn by docs/play/icon.py -->
+<!-- The Xpra logo, redrawn for adaptive icons, with the head of the Android robot: all of it stays
+     within the safe zone, a circle of 66dp in the middle of the 108dp icon.
+     The Android robot is reproduced or modified from work created and shared by Google and used
+     according to terms described in the Creative Commons 3.0 Attribution License.
+     Drawn by docs/play/icon.py -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -9,14 +12,14 @@
     android:viewportHeight="108">
     <path
         android:fillType="evenOdd"
-        android:pathData="M28.01,57.22 A24.38,16.1 0 1,0 76.77,57.22 A24.38,16.1 0 1,0 28.01,57.22 Z M32.61,56.53 A21.62,13.8 0 1,0 75.85,56.53 A21.62,13.8 0 1,0 32.61,56.53 Z">
+        android:pathData="M28.27,53.94 A22.26,14.7 0 1,0 72.79,53.94 A22.26,14.7 0 1,0 28.27,53.94 Z M32.47,53.31 A19.74,12.6 0 1,0 71.95,53.31 A19.74,12.6 0 1,0 32.47,53.31 Z">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
-                android:startX="28.01"
-                android:startY="57.22"
-                android:endX="76.77"
-                android:endY="57.22">
+                android:startX="28.27"
+                android:startY="53.94"
+                android:endX="72.79"
+                android:endY="53.94">
                 <item android:offset="0" android:color="#3CE03C" />
                 <item android:offset="0.55" android:color="#30E6E0" />
                 <item android:offset="1" android:color="#5050F0" />
@@ -25,11 +28,29 @@
     </path>
     <path
         android:fillColor="#080808"
-        android:pathData="M31.69,33.76 L44.57,33.76 L71.71,74.24 L58.83,74.24 Z" />
+        android:pathData="M31.63,32.52 L43.39,32.52 L68.17,69.48 L56.41,69.48 Z" />
     <path
         android:fillColor="#080808"
-        android:pathData="M67.57,33.76 L72.17,33.76 L36.75,74.24 L32.15,74.24 Z" />
+        android:pathData="M64.39,32.52 L68.59,32.52 L36.25,69.48 L32.05,69.48 Z" />
     <path
         android:fillColor="#080808"
-        android:pathData="M61.29 53.09V56.3H60.29V47.96H61.29V48.88Q61.6 48.34 62.08 48.08Q62.56 47.82 63.22 47.82Q64.32 47.82 65.01 48.69Q65.69 49.56 65.69 50.99Q65.69 52.41 65.01 53.28Q64.32 54.16 63.22 54.16Q62.56 54.16 62.08 53.89Q61.6 53.63 61.29 53.09ZM64.66 50.99Q64.66 49.89 64.21 49.27Q63.76 48.65 62.98 48.65Q62.19 48.65 61.74 49.27Q61.29 49.89 61.29 50.99Q61.29 52.08 61.74 52.7Q62.19 53.33 62.98 53.33Q63.76 53.33 64.21 52.7Q64.66 52.08 64.66 50.99ZM70.84 48.89Q70.67 48.79 70.47 48.75Q70.28 48.7 70.04 48.7Q69.2 48.7 68.75 49.25Q68.3 49.8 68.3 50.82V54H67.3V47.96H68.3V48.9Q68.61 48.35 69.11 48.08Q69.61 47.82 70.33 47.82Q70.43 47.82 70.56 47.83Q70.68 47.84 70.83 47.87ZM74.62 50.97Q73.42 50.97 72.96 51.24Q72.49 51.51 72.49 52.18Q72.49 52.71 72.84 53.02Q73.19 53.33 73.79 53.33Q74.61 53.33 75.11 52.74Q75.61 52.16 75.61 51.19V50.97ZM76.6 50.56V54H75.61V53.08Q75.27 53.63 74.76 53.89Q74.25 54.16 73.52 54.16Q72.59 54.16 72.05 53.64Q71.5 53.12 71.5 52.24Q71.5 51.22 72.18 50.71Q72.86 50.19 74.22 50.19H75.61V50.09Q75.61 49.41 75.16 49.03Q74.71 48.66 73.89 48.66Q73.38 48.66 72.89 48.78Q72.39 48.91 71.94 49.15V48.24Q72.49 48.03 73 47.92Q73.51 47.82 74 47.82Q75.31 47.82 75.95 48.5Q76.6 49.18 76.6 50.56Z" />
+        android:pathData="M58.66 50.17V53.1H57.75V45.49H58.66V46.32Q58.94 45.83 59.38 45.59Q59.81 45.35 60.42 45.35Q61.42 45.35 62.05 46.15Q62.68 46.95 62.68 48.25Q62.68 49.55 62.05 50.35Q61.42 51.14 60.42 51.14Q59.81 51.14 59.38 50.9Q58.94 50.67 58.66 50.17ZM61.74 48.25Q61.74 47.25 61.33 46.68Q60.92 46.11 60.2 46.11Q59.48 46.11 59.07 46.68Q58.66 47.25 58.66 48.25Q58.66 49.25 59.07 49.82Q59.48 50.38 60.2 50.38Q60.92 50.38 61.33 49.82Q61.74 49.25 61.74 48.25ZM67.37 46.33Q67.22 46.25 67.04 46.2Q66.86 46.16 66.64 46.16Q65.88 46.16 65.47 46.66Q65.05 47.16 65.05 48.1V51H64.14V45.49H65.05V46.34Q65.34 45.84 65.8 45.6Q66.26 45.35 66.91 45.35Q67 45.35 67.12 45.37Q67.23 45.38 67.37 45.4ZM70.83 48.23Q69.73 48.23 69.31 48.48Q68.88 48.73 68.88 49.34Q68.88 49.82 69.2 50.1Q69.52 50.38 70.06 50.38Q70.82 50.38 71.27 49.85Q71.73 49.32 71.73 48.43V48.23ZM72.63 47.85V51H71.73V50.16Q71.42 50.67 70.96 50.9Q70.49 51.14 69.82 51.14Q68.98 51.14 68.48 50.67Q67.98 50.19 67.98 49.4Q67.98 48.47 68.6 47.99Q69.22 47.52 70.46 47.52H71.73V47.43Q71.73 46.81 71.32 46.46Q70.91 46.12 70.16 46.12Q69.69 46.12 69.24 46.24Q68.8 46.35 68.38 46.58V45.74Q68.88 45.55 69.35 45.45Q69.81 45.35 70.26 45.35Q71.45 45.35 72.04 45.97Q72.63 46.59 72.63 47.85Z" />
+    <!-- sets the Android head apart from the logo -->
+    <path
+        android:fillColor="@color/ic_launcher_background"
+        android:pathData="M59.4,74 A10.6,10.6 0 0,1 80.6,74 Z" />
+    <path
+        android:pathData="M65.68,66.26 L63.52,62.3 M74.32,66.26 L76.48,62.3"
+        android:strokeColor="@color/ic_launcher_background"
+        android:strokeLineCap="round"
+        android:strokeWidth="4.28" />
+    <path
+        android:fillColor="#3DDC84"
+        android:fillType="evenOdd"
+        android:pathData="M61,74 A9,9 0 0,1 79,74 Z M65.23,69.95 A0.99,0.99 0 1,0 67.21,69.95 A0.99,0.99 0 1,0 65.23,69.95 Z M72.79,69.95 A0.99,0.99 0 1,0 74.77,69.95 A0.99,0.99 0 1,0 72.79,69.95 Z" />
+    <path
+        android:pathData="M65.68,66.26 L63.52,62.3 M74.32,66.26 L76.48,62.3"
+        android:strokeColor="#3DDC84"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.08" />
 </vector>
