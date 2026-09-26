@@ -66,9 +66,10 @@ class ServerDetailsDataStore(
             PREF_CONNECTION_TYPE -> serverDetails.type = enumValueOf(value ?: ConnectionType.TCP.name)
             PREF_NAME -> serverDetails.name = value
             PREF_HOST -> serverDetails.host = value
-            PREF_PORT -> serverDetails.port = value?.toInt() ?: 0
+            // checked when saved, see ServerDetailsFragment.validate()
+            PREF_PORT -> serverDetails.port = value?.trim()?.toIntOrNull() ?: 0
             PREF_USERNAME -> serverDetails.username = value
-            PREF_DISPLAY_ID -> serverDetails.displayId = value?.toInt() ?: -1
+            PREF_DISPLAY_ID -> serverDetails.displayId = value?.trim()?.toIntOrNull() ?: -1
             PREF_PICTURE_ENC -> serverDetails.pictureEncoding = enumValueOf(value ?: PictureEncoding.jpeg.name)
             PREF_RESOLUTION -> serverDetails.scalePercent = value?.toIntOrNull() ?: ServerDetails.SCALE_AUTOMATIC
             PREF_APP_WINDOW_TIMEOUT -> serverDetails.appWindowTimeout =

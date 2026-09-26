@@ -42,13 +42,13 @@ class YesNoAskTask extends UiTask<String, Boolean> {
         public YesNoDialog(Context ctx, String message) {
             super(ctx);
             setMessage(message);
-            setPositiveButton("YES", new OnClickListener() {
+            setPositiveButton(android.R.string.yes, new OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     postResult(true);
                 }
             });
-            setNegativeButton("NO", new OnClickListener() {
+            setNegativeButton(android.R.string.no, new OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     postResult(false);

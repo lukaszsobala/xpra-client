@@ -102,8 +102,9 @@ internal class VideoStream private constructor(
                 }
                 buffer.clear()
                 buffer.put(data)
-                decoding.add(frame)
                 codec.queueInputBuffer(index, 0, data.size, frame.pts, 0)
+                // only once queued: a frame which failed is still waiting, see takePending()
+                decoding.add(frame)
             } catch (e: Exception) {
                 waiting.addFirst(frame)
                 fail(e)

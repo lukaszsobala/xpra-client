@@ -48,6 +48,9 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
 
     private var userInfoHandler: SshUserInfoHandler? = null
 
+    /** the server this screen connects to, until connected */
+    private var connecting: ServerDetails? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Timber.d("onCreate()")
@@ -71,6 +74,7 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
                                 title = connection.name
                                 val userInfo = SshUserInfoHandler(this, connection)
                                 userInfoHandler = userInfo
+                                connecting = connection
                                 api.connect(connection, userInfo)
                             },
                             { throwable: Throwable? ->
@@ -86,19 +90,35 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
         disposables.dispose()
         serviceBinderFragment.whenXpraAvailable { api ->
             api.unregisterConnectionListener(this)
+            if (connecting != null && isFinishing) {
+                // cancelled by the user: do not connect behind their back
+                api.disconnect()
+            }
         }
     }
 
     override fun onConnected(serverDetails: ServerDetails) {
+        connecting = null
         userInfoHandler?.onConnected()
         setResult(RESULT_OK)
         finish()
     }
 
     override fun onDisconnected(serverDetails: ServerDetails) {
+        // the same object: not the end of a previous connection to the server
+        if (serverDetails === connecting) {
+            // ie: from the notification
+            connecting = null
+            setResult(RESULT_CANCELED)
+            finish()
+        }
     }
 
     override fun onConnectionError(serverDetails: ServerDetails, e: IOException) {
+        if (serverDetails !== connecting) {
+            return
+        }
+        connecting = null
         Timber.e(e)
         lifecycleScope.launch {
             withStarted {

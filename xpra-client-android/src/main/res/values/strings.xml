@@ -24,6 +24,8 @@
     <string name="connection_type">Connection type</string>
 
     <string name="connected_to">Connected to %s</string>
+    <string name="connecting_to">Connecting to %s…</string>
+    <string name="invalid_port">The port must be a number from 1 to 65535.</string>
     <string name="disconnect">Disconnect</string>
     <string name="channel_name">Xpra Connection Channel</string>
     <string name="save">save</string>
@@ -65,6 +67,7 @@
     <!-- a window without a title, whose application is unknown -->
     <string name="untitled_window">Untitled window</string>
     <string name="remember_password">Remember password</string>
+    <string name="show_password">Show password</string>
     <string name="forget_passwords">Forget saved passwords</string>
     <string name="forget_passwords_summary">Saved passwords are encrypted with a key that never leaves this device</string>
     <string name="no_saved_passwords">No saved passwords</string>

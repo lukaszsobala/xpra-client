@@ -20,6 +20,7 @@ package com.github.jksiezni.xpra.config
 
 import android.net.Uri
 import android.os.Bundle
+import android.text.InputType
 import android.util.Patterns
 import android.view.Menu
 import android.view.MenuInflater
@@ -99,6 +100,18 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
                     getString(R.string.app_window_timeout_seconds, seconds)
                 }
             }
+
+        // android:inputType is not applied by the AndroidX preferences: numbers only
+        findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_PORT)?.setOnBindEditTextListener {
+            it.inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_DISPLAY_ID)?.setOnBindEditTextListener {
+            // -1 for automatic
+            it.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
+        }
+        findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_APP_WINDOW_TIMEOUT)?.setOnBindEditTextListener {
+            it.inputType = InputType.TYPE_CLASS_NUMBER
+        }
 
         findPreference<ListPreference>(ServerDetailsDataStore.PREF_CONNECTION_TYPE)?.let {
             it.setOnPreferenceChangeListener { _, newValue ->
@@ -256,7 +269,16 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
     }
 
     private fun validate(serverDetails: ServerDetails): Boolean {
-        return validateName(serverDetails.name) && validateHostname(serverDetails.host)
+        return validateName(serverDetails.name) && validateHostname(serverDetails.host) &&
+            validatePort(serverDetails.port)
+    }
+
+    private fun validatePort(port: Int): Boolean {
+        if (port !in 1..65535) {
+            Toast.makeText(activity, R.string.invalid_port, Toast.LENGTH_LONG).show()
+            return false
+        }
+        return true
     }
 
     companion object {

@@ -103,7 +103,7 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
             buildPrompts(layout);
 
             setView(layout);
-            setPositiveButton("OK", new OnClickListener() {
+            setPositiveButton(android.R.string.ok, new OnClickListener() {
 
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
@@ -111,7 +111,7 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
                     postResult(true);
                 }
             });
-            setNegativeButton("CANCEL", new OnClickListener() {
+            setNegativeButton(android.R.string.cancel, new OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     postResult(false);
@@ -139,7 +139,9 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
         private void buildPrompts(LinearLayout layout) {
             final LayoutInflater inflater = LayoutInflater.from(context);
             for (int i = 0; i < prompt.length; ++i) {
-                final View credentialsView = inflater.inflate(R.layout.credentials_item, layout);
+                // not attached by inflate(), which would return the layout rather than the item
+                final View credentialsView = inflater.inflate(R.layout.credentials_item, layout, false);
+                layout.addView(credentialsView);
                 final TextView promptView = credentialsView.findViewById(R.id.promptTextView);
                 final EditText editView = credentialsView.findViewById(R.id.passwdEditText);
                 promptView.setText(prompt[i]);
@@ -151,7 +153,7 @@ final class CredentialsAskTask extends UiTask<Void, Boolean> {
                 }
             }
             final CheckBox checkbox = new CheckBox(context);
-            checkbox.setText("Show password");
+            checkbox.setText(R.string.show_password);
             checkbox.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {

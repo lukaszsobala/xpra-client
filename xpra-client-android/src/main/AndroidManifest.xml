@@ -57,10 +57,13 @@
             android:documentLaunchMode="intoExisting"
             android:autoRemoveFromRecents="true" />
 
+        <!-- not created again when the device rotates: that would lose the password prompts
+             of the connection, which waits for their answers -->
         <activity
             android:name=".ConnectXpraActivity"
             android:exported="false"
             android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:theme="@style/AppTheme.Translucent"/>
 
         <!-- started by the home screen icons of the server's applications: shortcuts start

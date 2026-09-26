@@ -42,11 +42,16 @@ public class TcpXpraConnector extends XpraConnector implements Runnable {
     public static final int READ_TIMEOUT_MS = 30_000;
     /** without it, connecting to an unreachable server waits for minutes, ie: while reconnecting */
     public static final int CONNECT_TIMEOUT_MS = 15_000;
+    /** how long the server has to close the connection, once told that the client disconnects */
+    static final int DISCONNECT_GRACE_MS = 2_000;
 
     private final String host;
     private final int port;
 
-    private Thread thread;
+    private volatile Thread thread;
+    /** the thread of the connection, until it ends: see {@link #isAlive()} */
+    private volatile Thread worker;
+    private volatile Socket socket;
 
     public TcpXpraConnector(XpraClient client, String hostname, int port) {
         super(client);
@@ -59,18 +64,34 @@ public class TcpXpraConnector extends XpraConnector implements Runnable {
         if (thread != null) {
             return false;
         }
-        thread = new Thread(this);
+        thread = new Thread(this, "XpraTcpConnection");
+        worker = thread;
         thread.start();
         return true;
     }
 
     @Override
     public synchronized void disconnect() {
-        if (thread != null) {
-            if (!disconnectCleanly()) {
-                thread.interrupt();
-            }
+        final Thread t = thread;
+        if (t != null) {
+            // before closing the socket, which the thread checks once it created it
             thread = null;
+            if (disconnectCleanly()) {
+                // a server which cannot be reached any more never closes the connection
+                Later.run(this::closeSocket, DISCONNECT_GRACE_MS);
+            } else {
+                // still connecting, which an interruption does not stop
+                t.interrupt();
+                Later.run(this::closeSocket, 0);
+            }
+        }
+    }
+
+    private void closeSocket() {
+        final Socket s = socket;
+        if (s != null) try {
+            s.close();
+        } catch (IOException ignored) {
         }
     }
 
@@ -88,6 +109,11 @@ public class TcpXpraConnector extends XpraConnector implements Runnable {
         Socket socket = null;
         try {
             socket = new Socket();
+            this.socket = socket;
+            if (Thread.currentThread() != thread) {
+                // disconnected before the socket existed
+                throw new IOException("Connection cancelled");
+            }
             socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
             InputStream is = socket.getInputStream();
             OutputStream os = socket.getOutputStream();
@@ -103,6 +129,11 @@ public class TcpXpraConnector extends XpraConnector implements Runnable {
         } catch (IOException e) {
             client.onConnectionError(e);
             fireOnConnectionErrorEvent(e);
+        } catch (RuntimeException e) {
+            // ie: an invalid port, or data which cannot be read: not a reason to crash the app
+            final IOException error = new IOException(e.getMessage(), e);
+            client.onConnectionError(error);
+            fireOnConnectionErrorEvent(error);
         } finally {
             if (socket != null) try {
                 socket.close();
@@ -139,7 +170,14 @@ public class TcpXpraConnector extends XpraConnector implements Runnable {
     }
 
     public boolean isRunning() {
-        return thread != null && thread.isAlive();
+        final Thread t = thread;
+        return t != null && t.isAlive();
+    }
+
+    @Override
+    public boolean isAlive() {
+        final Thread t = worker;
+        return t != null && t.isAlive();
     }
 
 }

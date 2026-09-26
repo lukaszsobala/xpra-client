@@ -22,6 +22,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.github.jksiezni.xpra.config.ServerDetails
@@ -29,6 +30,7 @@ import timber.log.Timber
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.security.MessageDigest
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -70,10 +72,18 @@ class PasswordVault(context: Context) {
             cipher.init(Cipher.DECRYPT_MODE, getKey(), GCMParameterSpec(TAG_BITS, data, 0, IV_BYTES))
             cipher.updateAAD(entry.label.toByteArray(Charsets.UTF_8))
             String(cipher.doFinal(data, IV_BYTES, data.size - IV_BYTES), Charsets.UTF_8)
-        } catch (e: GeneralSecurityException) {
+        } catch (e: AEADBadTagException) {
             // ie: the key was lost when the app data was restored from a backup
             Timber.w(e, "cannot decrypt the saved password, forgetting it")
             remove(entry)
+            null
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            Timber.w(e, "the key of the saved passwords is gone, forgetting the password")
+            remove(entry)
+            null
+        } catch (e: GeneralSecurityException) {
+            // ie: while the device is locked, as the key requires: the password still works later
+            Timber.w(e, "cannot decrypt the saved password now")
             null
         } catch (e: IllegalArgumentException) {
             remove(entry)
