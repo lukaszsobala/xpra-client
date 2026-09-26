@@ -60,6 +60,10 @@
         <item name="android:textSize">@dimen/compact_toolbar_title_size</item>
     </style>
 
+    <style name="TextAppearance.Xpra.CompactToolbarSubtitle" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textSize">@dimen/compact_toolbar_subtitle_size</item>
+    </style>
+
     <style name="DrawerArrowStyle" parent="Widget.AppCompat.DrawerArrowToggle">
         <item name="spinBars">true</item>
 

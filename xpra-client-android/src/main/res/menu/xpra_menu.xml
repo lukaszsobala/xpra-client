@@ -26,7 +26,7 @@
         android:icon="@drawable/ic_baseline_mouse_24"
         android:orderInCategory="100"
         android:title="@string/touchpad_mode"
-        app:showAsAction="ifRoom"/>
+        app:showAsAction="always"/>
     <item
         android:id="@+id/action_keyboard"
         android:icon="@drawable/ic_baseline_keyboard_24"

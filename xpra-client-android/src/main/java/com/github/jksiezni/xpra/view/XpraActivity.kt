@@ -48,6 +48,7 @@ import com.github.jksiezni.xpra.databinding.ActivityXpraBinding
 import timber.log.Timber
 import xpra.client.KeyboardInput
 import xpra.client.ServerApp
+import xpra.client.XpraWindow
 import java.io.IOException
 
 class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener, ConnectionEventListener {
@@ -112,7 +113,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     private fun bindWindow(rootWindow: AndroidXpraWindow) {
         boundWindow?.removeWindowListener(this)
         boundWindow = rootWindow
-        title = rootWindow.label(this, serverApps())
+        showHeading(rootWindow)
         updateTaskDescription(rootWindow)
         rootWindow.addWindowListener(this)
         binding.workspaceView.removeAllViews()
@@ -407,8 +408,18 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     }
 
     override fun onMetadataChanged(window: AndroidXpraWindow) {
-        title = window.label(this, serverApps())
+        showHeading(window)
         updateTaskDescription(window)
+    }
+
+    /**
+     * The toolbar shows the name of the app, which the title of its window may hide, ie: "app.js -
+     * /home/me - Geany", and the title below it, smaller.
+     */
+    private fun showHeading(window: AndroidXpraWindow) {
+        val appName = window.getAppName(serverApps())
+        title = appName ?: window.label(this, serverApps())
+        supportActionBar?.subtitle = if (appName != null) XpraWindow.titleWithout(window.title, appName) else null
     }
 
     override fun onIconChanged(window: AndroidXpraWindow) {

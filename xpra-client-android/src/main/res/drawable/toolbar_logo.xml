@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The icon of the app, in the toolbar: the adaptive icon alone would be as big as its whole
+     canvas (108dp), and touch the title. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="36dp"
+        android:height="36dp"
+        android:drawable="@mipmap/ic_launcher"
+        android:end="16dp"
+        android:gravity="start|center_vertical" />
+</layer-list>

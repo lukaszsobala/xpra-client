@@ -63,4 +63,15 @@ public class WindowLabelTest {
         assertEquals("app.js", XpraWindow.label("app.js", Collections.emptyList(), null, APPS));
         assertNull(XpraWindow.label("  ", Collections.emptyList(), null, APPS));
     }
+
+    @Test
+    public void dropsTheAppNameFromTheTitle() {
+        assertEquals("app.js - /home/me/src",
+            XpraWindow.titleWithout("app.js - /home/me/src - Geany", "Geany"));
+        assertEquals("Inbox", XpraWindow.titleWithout("Inbox \u2014 Mozilla Thunderbird", "Mozilla Thunderbird"));
+        assertEquals("app.js", XpraWindow.titleWithout("app.js", "Geany"));
+        assertNull(XpraWindow.titleWithout("geany", "Geany"));
+        assertNull(XpraWindow.titleWithout(null, "Geany"));
+        assertEquals("Terminal", XpraWindow.titleWithout("Terminal", null));
+    }
 }

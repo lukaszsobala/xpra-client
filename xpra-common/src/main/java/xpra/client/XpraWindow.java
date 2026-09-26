@@ -117,6 +117,19 @@ public abstract class XpraWindow {
         if (!trimmed.isEmpty() && !isTechnical(trimmed, command)) {
             return trimmed;
         }
+        final String app = appName(windowClasses, command, apps);
+        return app != null ? app : trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * The name of the app which shows this window: from the menu of the server, or its window
+     * class, ie: "Geany"; null if unknown.
+     */
+    public String getAppName(List<ServerApp> apps) {
+        return appName(windowClasses, command, apps);
+    }
+
+    static String appName(List<String> windowClasses, String command, List<ServerApp> apps) {
         for (ServerApp app : apps) {
             if (app.matchesWindow(windowClasses)) {
                 return app.name;
@@ -127,6 +140,27 @@ public abstract class XpraWindow {
             final String windowClass = windowClasses.get(i);
             if (windowClass != null && !windowClass.isEmpty() && !isTechnical(windowClass, command)) {
                 return Character.toUpperCase(windowClass.charAt(0)) + windowClass.substring(1);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The title of the window, less the name of its app which many apps add at its end,
+     * ie: "app.js - /home/me - Geany" gives "app.js - /home/me"; null if nothing is left.
+     */
+    public static String titleWithout(String title, String appName) {
+        String trimmed = title != null ? title.trim() : "";
+        if (appName != null) {
+            for (String separator : new String[] {" - ", " \u2014 ", " \u2013 ", " | "}) {
+                final String suffix = separator + appName;
+                if (trimmed.regionMatches(true, trimmed.length() - suffix.length(), suffix, 0, suffix.length())) {
+                    trimmed = trimmed.substring(0, trimmed.length() - suffix.length()).trim();
+                    break;
+                }
+            }
+            if (trimmed.equalsIgnoreCase(appName)) {
+                return null;
             }
         }
         return trimmed.isEmpty() ? null : trimmed;
