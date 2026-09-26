@@ -20,6 +20,7 @@ package xpra.client;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import xpra.protocol.XpraSender;
 import xpra.protocol.data.SizeConstraints;
@@ -96,6 +97,89 @@ public abstract class XpraWindow {
 
     public String getTitle() {
         return title;
+    }
+
+    /**
+     * A name for the window which means something to the user: its title, unless the title is
+     * missing, or only the name of a script or program (ie: "app.js", which apps written for
+     * Node.js often show): then the name of its application, from the server's menu, or else
+     * from its WM_CLASS or command.
+     *
+     * @param apps - the applications of the server, see {@link XpraClient#getServerApps()}
+     * @return the title, even a technical one, when nothing better is known, or null without one
+     */
+    public String getLabel(List<ServerApp> apps) {
+        return label(title, windowClasses, command, apps);
+    }
+
+    static String label(String title, List<String> windowClasses, String command, List<ServerApp> apps) {
+        final String trimmed = title != null ? title.trim() : "";
+        if (!trimmed.isEmpty() && !isTechnical(trimmed, command)) {
+            return trimmed;
+        }
+        final String app = appName(windowClasses, command, apps);
+        return app != null ? app : trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * The name of the app which shows this window: from the menu of the server, or its window
+     * class, ie: "Geany"; null if unknown.
+     */
+    public String getAppName(List<ServerApp> apps) {
+        return appName(windowClasses, command, apps);
+    }
+
+    static String appName(List<String> windowClasses, String command, List<ServerApp> apps) {
+        for (ServerApp app : apps) {
+            if (app.matchesWindow(windowClasses)) {
+                return app.name;
+            }
+        }
+        // the class name, ie: "Geany", rather than the instance name
+        for (int i = windowClasses.size() - 1; i >= 0; i--) {
+            final String windowClass = windowClasses.get(i);
+            if (windowClass != null && !windowClass.isEmpty() && !isTechnical(windowClass, command)) {
+                return Character.toUpperCase(windowClass.charAt(0)) + windowClass.substring(1);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The title of the window, less the name of its app which many apps add at its end,
+     * ie: "app.js - /home/me - Geany" gives "app.js - /home/me"; null if nothing is left.
+     */
+    public static String titleWithout(String title, String appName) {
+        String trimmed = title != null ? title.trim() : "";
+        if (appName != null) {
+            for (String separator : new String[] {" - ", " \u2014 ", " \u2013 ", " | "}) {
+                final String suffix = separator + appName;
+                if (trimmed.regionMatches(true, trimmed.length() - suffix.length(), suffix, 0, suffix.length())) {
+                    trimmed = trimmed.substring(0, trimmed.length() - suffix.length()).trim();
+                    break;
+                }
+            }
+            if (trimmed.equalsIgnoreCase(appName)) {
+                return null;
+            }
+        }
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static final Pattern SCRIPT_OR_PROGRAM =
+        Pattern.compile("(?i)\\S*\\.(js|mjs|cjs|ts|py|pyw|sh|bash|pl|rb|php|jar|exe|bin|appimage)");
+
+    /**
+     * Whether a title is only the name of a script, ie: "app.js", a path, or the program itself.
+     */
+    static boolean isTechnical(String title, String command) {
+        if (SCRIPT_OR_PROGRAM.matcher(title).matches() || title.startsWith("/")) {
+            return true;
+        }
+        if (command != null && !command.trim().isEmpty()) {
+            return title.equals(command.trim()) || title.equals(ServerApp.programName(command));
+        }
+        return false;
     }
 
     /**

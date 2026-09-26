@@ -45,8 +45,11 @@ import com.github.jksiezni.xpra.config.ServerDetails
 import io.reactivex.schedulers.Schedulers
 import kotlin.math.roundToInt
 import com.github.jksiezni.xpra.databinding.ActivityXpraBinding
+import com.github.jksiezni.xpra.help.HowToUse
 import timber.log.Timber
 import xpra.client.KeyboardInput
+import xpra.client.ServerApp
+import xpra.client.XpraWindow
 import java.io.IOException
 
 class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener, ConnectionEventListener {
@@ -83,6 +86,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
                 finish()
                 return@whenXpraAvailable
             }
+            serverApps = { api.xpraClient.serverApps }
             api.registerConnectionListener(this)
             api.xpraClient.addEventListener(this)
             // the activity is created again when the device rotates:
@@ -97,6 +101,9 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
         }
     }
 
+    /** the applications of the server, to name the windows whose title means nothing */
+    private var serverApps: () -> List<ServerApp> = { emptyList() }
+
     /** the window shown, which is a new object after reconnecting */
     private var boundWindow: AndroidXpraWindow? = null
 
@@ -107,7 +114,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     private fun bindWindow(rootWindow: AndroidXpraWindow) {
         boundWindow?.removeWindowListener(this)
         boundWindow = rootWindow
-        title = rootWindow.title
+        showHeading(rootWindow)
         updateTaskDescription(rootWindow)
         rootWindow.addWindowListener(this)
         binding.workspaceView.removeAllViews()
@@ -270,6 +277,10 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
                 addToHomeScreen()
                 true
             }
+            R.id.action_how_to_use -> {
+                HowToUse.show(this)
+                true
+            }
             R.id.action_close -> {
                 serviceBinderFragment.whenXpraAvailable { api ->
                     val window = api.xpraClient.getWindow(windowId)
@@ -350,7 +361,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
             when {
                 app != null -> AppShortcuts.pin(this, server, app.name, app.command, app.wmClass,
                     AppShortcuts.decodeIcon(app) ?: window.icon)
-                !command.isNullOrBlank() -> AppShortcuts.pin(this, server, windowClass ?: window.title,
+                !command.isNullOrBlank() -> AppShortcuts.pin(this, server, windowClass ?: window.label(this, emptyList()),
                     command, windowClass, window.icon)
                 else -> Toast.makeText(this, R.string.app_not_found, Toast.LENGTH_LONG).show()
             }
@@ -362,7 +373,7 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
      */
     @Suppress("DEPRECATION")
     private fun updateTaskDescription(window: AndroidXpraWindow) {
-        setTaskDescription(ActivityManager.TaskDescription(window.title, window.icon))
+        setTaskDescription(ActivityManager.TaskDescription(window.label(this, serverApps()), window.icon))
     }
 
     private fun toggleKeyboard(view: View?) {
@@ -402,8 +413,18 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     }
 
     override fun onMetadataChanged(window: AndroidXpraWindow) {
-        title = window.title
+        showHeading(window)
         updateTaskDescription(window)
+    }
+
+    /**
+     * The toolbar shows the name of the app, which the title of its window may hide, ie: "app.js -
+     * /home/me - Geany", and the title below it, smaller.
+     */
+    private fun showHeading(window: AndroidXpraWindow) {
+        val appName = window.getAppName(serverApps())
+        title = appName ?: window.label(this, serverApps())
+        supportActionBar?.subtitle = if (appName != null) XpraWindow.titleWithout(window.title, appName) else null
     }
 
     override fun onIconChanged(window: AndroidXpraWindow) {

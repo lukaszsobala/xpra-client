@@ -25,6 +25,11 @@ ext {
     versionMinor = 0
     // CI builds are numbered, so that each APK can be installed over the previous one
     buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "0").toInteger()
+    // The key which signs the release bundles uploaded to Google Play (the upload key, as Play
+    // signs the apps it delivers with a key of its own). It must never be in the repository:
+    // it comes from the environment, ie: the secrets of GitHub Actions, or from
+    // ~/.gradle/gradle.properties, see docs/releasing.md
+    uploadKey = { String name -> System.getenv(name) ?: project.findProperty(name) }
 }
 // assert versionMinor and buildNumber fit in their digits of versionCode
 assert ext.versionMinor < 100
@@ -38,7 +43,7 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId "io.github.xpra.client"
+        applicationId "io.github.lukaszsobala.xpra"
         minSdk 23
         targetSdk 36
         versionCode = versionMajor * 1000000 + versionMinor * 10000 + buildNumber
@@ -56,11 +61,26 @@ android {
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
+        release {
+            def storePath = uploadKey("XPRA_UPLOAD_STORE_FILE")
+            if (storePath) {
+                storeFile file(storePath)
+                storePassword uploadKey("XPRA_UPLOAD_STORE_PASSWORD")
+                keyAlias uploadKey("XPRA_UPLOAD_KEY_ALIAS")
+                keyPassword uploadKey("XPRA_UPLOAD_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+        }
+        release {
+            // without the upload key, ie: on forks or pull requests, the bundle is left unsigned
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
@@ -73,12 +93,23 @@ android {
     }
     buildFeatures {
         viewBinding true
+        // BuildConfig.DEBUG: release builds log less, see XpraApplication
+        buildConfig true
     }
     packaging {
         resources {
             // OSGi/JPMS metadata of multi-release jars (JSch, JSpecify), unused on Android
             excludes += ['META-INF/versions/9/OSGI-INF/MANIFEST.MF', 'META-INF/versions/*/module-info.class']
         }
+    }
+}
+
+// Google Play refuses a version code it has seen already: signed bundles need a build number,
+// which CI gives them (or GITHUB_RUN_NUMBER, set by hand)
+gradle.taskGraph.whenReady { graph ->
+    if (android.signingConfigs.release.storeFile != null && buildNumber == 0 &&
+            graph.allTasks.any { it.path == "${project.path}:bundleRelease" }) {
+        throw new GradleException("A signed release bundle needs a build number: set GITHUB_RUN_NUMBER")
     }
 }
 

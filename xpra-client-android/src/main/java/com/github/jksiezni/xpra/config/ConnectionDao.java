@@ -40,6 +40,14 @@ public interface ConnectionDao {
     @Query("SELECT * FROM ServerDetails WHERE id = :id")
     Single<ServerDetails> getById(int id);
 
+    /** the SSH private keys used by the servers, see {@link com.github.jksiezni.xpra.ssh.SshKeys} */
+    @Query("SELECT sshPrivateKeyFile FROM ServerDetails WHERE sshPrivateKeyFile IS NOT NULL")
+    List<String> getPrivateKeyFiles();
+
+    /** for a key which is gone, ie: the settings were restored from a backup, which leaves the keys out */
+    @Query("UPDATE ServerDetails SET sshPrivateKeyFile = NULL WHERE sshPrivateKeyFile = :path")
+    void forgetPrivateKeyFile(String path);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void save(ServerDetails config);
 

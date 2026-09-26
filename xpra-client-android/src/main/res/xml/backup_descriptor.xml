@@ -20,4 +20,6 @@
 <full-backup-content>
     <!-- saved passwords: useless elsewhere, as their key stays in this device's keystore -->
     <exclude domain="sharedpref" path="saved_passwords.xml" />
+    <!-- SSH private keys never leave the device, see SshKeys -->
+    <exclude domain="file" path="ssh_keys/" />
 </full-backup-content>

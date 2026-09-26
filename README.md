@@ -23,6 +23,9 @@ Every push is built by [GitHub Actions](https://github.com/lukaszsobala/xpra-cli
 and the debug APK can be downloaded from the `xpra-client-android-debug` artifact of a run.
 You can also build it yourself with `./gradlew assembleDebug` (JDK 17 and the Android SDK are needed).
 
+Releases for Google Play are built by CI from version tags, see [docs/releasing.md](docs/releasing.md).
+The app collects no data: see its [privacy policy](docs/privacy-policy.md).
+
 ## Compatibility
 
 The client speaks the current Xpra protocol ("rencodeplus" packets, lz4 compression)

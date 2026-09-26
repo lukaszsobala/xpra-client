@@ -30,7 +30,7 @@
         android:layout_height="wrap_content"
         android:background="?attr/colorSurfaceContainer"
         android:minHeight="?attr/actionBarSize"
-        app:logo="@mipmap/ic_launcher"/>
+        app:logo="@drawable/toolbar_logo"/>
 
     <FrameLayout
         android:id="@+id/container"

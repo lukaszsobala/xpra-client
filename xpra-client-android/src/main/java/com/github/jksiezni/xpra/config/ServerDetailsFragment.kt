@@ -18,13 +18,15 @@
 
 package com.github.jksiezni.xpra.config
 
-import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Patterns
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -33,11 +35,25 @@ import androidx.preference.PreferenceFragmentCompat
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.gl.VideoDecoders
 import com.github.jksiezni.xpra.ssh.PasswordVault
+import com.github.jksiezni.xpra.ssh.SshKeys
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import io.reactivex.Completable
+import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+import java.io.IOException
 import java.util.regex.Pattern
 
 class ServerDetailsFragment : PreferenceFragmentCompat() {
 
     private lateinit var dataStore: ServerDetailsDataStore
+
+    /** key files have no MIME type of their own, ie: id_ed25519 */
+    private val pickPrivateKey = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { importPrivateKey(it) }
+    }
 
     init {
         setHasOptionsMenu(true)
@@ -61,6 +77,7 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
             R.id.action_save -> if (save()) {
                 parentFragmentManager.popBackStack()
             }
+            R.id.action_delete -> confirmDelete()
             android.R.id.home -> parentFragmentManager.popBackStack()
         }
         return super.onOptionsItemSelected(item)
@@ -91,13 +108,26 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
             setSshPreferencesEnabled(ConnectionType.SSH.name == it.value)
         }
 
-        findPreference<Preference>(ServerDetailsDataStore.PREF_PRIVATE_KEY)?.setOnPreferenceClickListener {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "application/x-pem-file" // https://pki-tutorial.readthedocs.io/en/latest/mime.html
+        findPreference<Preference>(ServerDetailsDataStore.PREF_PRIVATE_KEY)?.let { pref ->
+            updatePrivateKeySummary(pref)
+            pref.setOnPreferenceClickListener {
+                if (dataStore.serverDetails.sshPrivateKeyFile == null) {
+                    pickPrivateKey.launch(arrayOf("*/*"))
+                } else {
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.ssh_private_key)
+                        .setItems(arrayOf(getString(R.string.choose_another_key), getString(R.string.remove_key))) { _, which ->
+                            if (which == 0) {
+                                pickPrivateKey.launch(arrayOf("*/*"))
+                            } else {
+                                dataStore.serverDetails.sshPrivateKeyFile = null
+                                updatePrivateKeySummary(pref)
+                            }
+                        }
+                        .show()
+                }
+                true
             }
-            startActivity(intent)
-            true
         }
 
         findPreference<Preference>(PREF_FORGET_PASSWORDS)?.let { pref ->
@@ -115,6 +145,64 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+    }
+
+    private fun importPrivateKey(uri: Uri) {
+        val context = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            var error = R.string.invalid_private_key
+            val path = withContext(Dispatchers.IO) {
+                try {
+                    SshKeys.import(context, uri)
+                } catch (e: SshKeys.InvalidKeyException) {
+                    Timber.w(e, "not a private key: %s", uri)
+                    null
+                } catch (e: IOException) {
+                    Timber.w(e, "cannot read the private key: %s", uri)
+                    error = R.string.unreadable_private_key
+                    null
+                } catch (e: SecurityException) {
+                    Timber.w(e, "cannot read the private key: %s", uri)
+                    error = R.string.unreadable_private_key
+                    null
+                }
+            }
+            if (path == null) {
+                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+            } else {
+                // used once the server is saved: an unused copy is deleted later
+                dataStore.serverDetails.sshPrivateKeyFile = path
+                findPreference<Preference>(ServerDetailsDataStore.PREF_PRIVATE_KEY)?.let { updatePrivateKeySummary(it) }
+            }
+        }
+    }
+
+    private fun updatePrivateKeySummary(pref: Preference) {
+        pref.summary = dataStore.serverDetails.sshPrivateKeyFile?.let { SshKeys.name(it) }
+            ?: getString(R.string.ssh_private_key_summary)
+    }
+
+    private fun confirmDelete() {
+        val server = dataStore.serverDetails
+        if (server.id == 0) {
+            // never saved
+            parentFragmentManager.popBackStack()
+            return
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.delete_server_title, server.name))
+            .setMessage(R.string.delete_server_message)
+            .setPositiveButton(R.string.delete) { _, _ ->
+                val context = requireContext().applicationContext
+                val dao = ConfigDatabase.getInstance().configs
+                Completable.fromAction {
+                    dao.delete(server)
+                    PasswordVault(context).forget(server.id)
+                }.subscribeOn(Schedulers.io()).subscribe()
+                parentFragmentManager.popBackStack()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun save(): Boolean {

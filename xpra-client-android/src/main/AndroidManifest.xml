@@ -22,8 +22,6 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- to reconnect as soon as the network comes back -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <!-- to ask the user to exempt the app from battery optimisations, see BackgroundRunning -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

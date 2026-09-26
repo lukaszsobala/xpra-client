@@ -20,5 +20,6 @@
 <resources>
     <!-- landscape screens are short: keep more of them for the remote windows -->
     <dimen name="compact_toolbar_height">40dp</dimen>
-    <dimen name="compact_toolbar_title_size">16sp</dimen>
+    <dimen name="compact_toolbar_title_size">14sp</dimen>
+    <dimen name="compact_toolbar_subtitle_size">11sp</dimen>
 </resources>

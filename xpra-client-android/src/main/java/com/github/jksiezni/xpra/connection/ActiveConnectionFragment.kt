@@ -33,6 +33,7 @@ import com.github.jksiezni.xpra.client.AndroidXpraWindow
 import com.github.jksiezni.xpra.client.ConnectionEventListener
 import com.github.jksiezni.xpra.view.Intents
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
+import com.github.jksiezni.xpra.client.label
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActiveConnectionFragmentBinding
 import io.reactivex.disposables.CompositeDisposable
@@ -127,14 +128,18 @@ class ActiveConnectionFragment : Fragment() {
         this.appsAdapter = appsAdapter
 
         service.whenXpraAvailable { api ->
-            api.xpraClient.getWindowsLiveData().observe(viewLifecycleOwner) { windows ->
-                val items = windows.map {
-                    val androidWindow = it as AndroidXpraWindow
-                    TaskItem(it.id, it.title, androidWindow.iconDrawable)
-                }
-                adapter.submitList(items)
+            var windows = emptyList<AndroidXpraWindow>()
+            // the windows are named after their apps, when their titles mean nothing
+            fun showWindows() {
+                val apps = api.xpraClient.serverApps
+                adapter.submitList(windows.map { TaskItem(it.id, it.label(requireContext(), apps), it.iconDrawable) })
+            }
+            api.xpraClient.getWindowsLiveData().observe(viewLifecycleOwner) {
+                windows = it.map { window -> window as AndroidXpraWindow }
+                showWindows()
             }
             api.xpraClient.getServerAppsLiveData().observe(viewLifecycleOwner) { apps ->
+                showWindows()
                 appsHeader.visible = apps.isNotEmpty() || api.isConnected
                 appsHint.title = if (api.xpraClient.canStartCommands()) R.string.no_server_apps else R.string.cannot_start_apps
                 appsHint.visible = apps.isEmpty() && api.isConnected

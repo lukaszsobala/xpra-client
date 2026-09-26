@@ -26,7 +26,7 @@
         android:icon="@drawable/ic_baseline_mouse_24"
         android:orderInCategory="100"
         android:title="@string/touchpad_mode"
-        app:showAsAction="ifRoom"/>
+        app:showAsAction="always"/>
     <item
         android:id="@+id/action_keyboard"
         android:icon="@drawable/ic_baseline_keyboard_24"
@@ -38,6 +38,11 @@
         android:icon="@drawable/ic_baseline_add_to_home_screen_24"
         android:orderInCategory="200"
         android:title="@string/add_to_home_screen"
+        app:showAsAction="never"/>
+    <item
+        android:id="@+id/action_how_to_use"
+        android:orderInCategory="210"
+        android:title="@string/how_to_use"
         app:showAsAction="never"/>
     <item
         android:id="@+id/action_close"
