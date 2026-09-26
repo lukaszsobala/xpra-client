@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- also the gap around the phone, in drawable-anydpi-v26/ic_launcher_foreground.xml -->
     <color name="ic_launcher_background">#E8F5E9</color>
 </resources>

@@ -43,9 +43,9 @@ the servers).
 
 ## Once: the Play Console
 
-- **Application ID**: `io.github.xpra.client` can never change once uploaded. It was chosen
-  by the original author; an ID of your own, ie: `io.github.lukaszsobala.xpra`, avoids any
-  confusion with the Xpra project (in `xpra-client-android/build.gradle`, `applicationId`).
+- **Application ID**: `io.github.lukaszsobala.xpra`, which can never change once uploaded.
+  (Builds before it used `io.github.xpra.client`, the ID of the original author: they are a
+  separate app, which can be uninstalled once the servers are added again.)
 - **Testing**: new personal developer accounts must run a closed test with at least 12 testers,
   opted in for 14 days in a row, before they can apply for production access.
 - **Privacy policy**: the URL of [privacy-policy.md](privacy-policy.md), ie:
@@ -63,7 +63,3 @@ the servers).
 - **Store listing**: the icon is [play/icon-512.png](play/icon-512.png). Play also needs a
   feature graphic (1024×500) and at least 2 phone screenshots. Describe the app as an
   unofficial client for Xpra, and link the source code, as the GPL asks.
-- **The Android robot** in the icon is licensed under CC BY 3.0, which needs an attribution: end
-  the description with "The Android robot is reproduced or modified from work created and
-  shared by Google and used according to terms described in the Creative Commons 3.0
-  Attribution License."
