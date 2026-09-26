@@ -47,6 +47,15 @@
     <string name="cancel">Cancel</string>
     <string name="hint_start_cmd">ex. xterm</string>
 
+    <string name="ssh_private_key">SSH private key</string>
+    <string name="ssh_private_key_summary">None: log in with a password. Tap to choose a key file, ie: id_ed25519</string>
+    <string name="choose_another_key">Choose another key</string>
+    <string name="remove_key">Remove the key</string>
+    <string name="invalid_private_key">This file is not an SSH private key</string>
+    <string name="unreadable_private_key">This file cannot be read</string>
+    <!-- ie: "Delete Rock5b?" -->
+    <string name="delete_server_title">Delete %1$s?</string>
+    <string name="delete_server_message">Its settings, saved passwords and private key are removed from this device.</string>
     <string name="remember_password">Remember password</string>
     <string name="forget_passwords">Forget saved passwords</string>
     <string name="forget_passwords_summary">Saved passwords are encrypted with a key that never leaves this device</string>
@@ -73,6 +82,8 @@
     <string name="background_running_title">Run in the background</string>
     <string name="background_running_message">Android\'s battery optimisations can cut the network of apps in the background, ie: while the screen is off, which drops the connection to the server. Your apps keep running on the server, and the connection is restored, but allowing this app to run in the background avoids the interruptions.\n\nSome phones, ie: Samsung ones, also put apps to sleep: see the battery settings of the app.</string>
     <string name="background_running_allowed">Already allowed: the settings let you change it back</string>
+    <!-- shown over the list of battery optimisations, as the app cannot be picked for the user -->
+    <string name="background_running_how">Pick \"All apps\", then %1$s, then \"Don\'t optimise\"</string>
     <string name="background_running_unavailable">This phone has no battery optimisation settings</string>
     <string name="allow">Allow</string>
     <string name="not_now">Not now</string>

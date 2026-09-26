@@ -23,10 +23,57 @@ jobs:
         with:
           # the open source (MIT) cache, rather than the proprietary "enhanced" one
           cache-provider: basic
+      # the release bundle is unsigned here: it checks that a release builds (ie: its lint checks)
       - name: Build and run unit tests
-        run: ./gradlew assembleDebug test
+        run: ./gradlew assembleDebug bundleRelease test
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
           name: xpra-client-android-debug
           path: xpra-client-android/build/outputs/apk/debug/*.apk
+
+  # Builds the bundle to upload to Google Play, signed with the upload key, for the tags
+  # of versions (ie: v1.0). The key comes from the secrets of the repository, see docs/releasing.md
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-26.04
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          # a release is built from scratch
+          cache-read-only: true
+      - name: Restore the upload key
+        env:
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets.XPRA_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$UPLOAD_KEYSTORE_BASE64" ]; then
+            echo "::error::The XPRA_UPLOAD_KEYSTORE_BASE64 secret is not set, see docs/releasing.md"
+            exit 1
+          fi
+          echo "$UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+      - name: Build the signed release bundle
+        env:
+          XPRA_UPLOAD_STORE_FILE: ${{ runner.temp }}/upload.jks
+          XPRA_UPLOAD_STORE_PASSWORD: ${{ secrets.XPRA_UPLOAD_STORE_PASSWORD }}
+          XPRA_UPLOAD_KEY_ALIAS: ${{ secrets.XPRA_UPLOAD_KEY_ALIAS }}
+          XPRA_UPLOAD_KEY_PASSWORD: ${{ secrets.XPRA_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease
+      - name: Delete the upload key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+      - name: Upload the release bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: xpra-client-android-release
+          path: xpra-client-android/build/outputs/bundle/release/*.aab

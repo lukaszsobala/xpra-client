@@ -47,6 +47,7 @@ import timber.log.Timber
 import xpra.client.XpraConnector
 import xpra.network.SshXpraConnector
 import xpra.network.TcpXpraConnector
+import java.io.File
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
@@ -276,8 +277,14 @@ class XpraService : Service() {
             if (knownHosts.isFile || knownHosts.createNewFile()) {
                 connector.jsch.setKnownHosts(knownHosts.absolutePath)
             }
-            if (c.sshPrivateKeyFile != null) {
-                connector.jsch.addIdentity(c.sshPrivateKeyFile)
+            val privateKey = c.sshPrivateKeyFile
+            if (privateKey != null) {
+                if (File(privateKey).isFile) {
+                    connector.jsch.addIdentity(privateKey)
+                } else {
+                    // ie: restored from a backup, which leaves the keys out: a password may do
+                    Timber.w("the SSH private key is gone: %s", privateKey)
+                }
             }
             if (c.displayId >= 0) {
                 connector.setDisplay(c.displayId)

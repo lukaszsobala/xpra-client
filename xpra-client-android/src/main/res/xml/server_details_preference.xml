@@ -62,8 +62,8 @@
                 android:title="SSH Username" />
             <Preference
                 android:key="private_keyfile"
-                android:summary="Choose a private key file"
-                android:title="SSH Private key" />
+                android:summary="@string/ssh_private_key_summary"
+                android:title="@string/ssh_private_key" />
             <Preference
                 android:key="forget_passwords"
                 android:summary="@string/forget_passwords_summary"

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Xpra logo, redrawn for adaptive icons: the logo stays within the safe zone,
+     a circle of 66dp in the middle of the 108dp icon. Drawn by docs/play/icon.py -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillType="evenOdd"
+        android:pathData="M28.01,57.22 A24.38,16.1 0 1,0 76.77,57.22 A24.38,16.1 0 1,0 28.01,57.22 Z M32.61,56.53 A21.62,13.8 0 1,0 75.85,56.53 A21.62,13.8 0 1,0 32.61,56.53 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="28.01"
+                android:startY="57.22"
+                android:endX="76.77"
+                android:endY="57.22">
+                <item android:offset="0" android:color="#3CE03C" />
+                <item android:offset="0.55" android:color="#30E6E0" />
+                <item android:offset="1" android:color="#5050F0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#080808"
+        android:pathData="M31.69,33.76 L44.57,33.76 L71.71,74.24 L58.83,74.24 Z" />
+    <path
+        android:fillColor="#080808"
+        android:pathData="M67.57,33.76 L72.17,33.76 L36.75,74.24 L32.15,74.24 Z" />
+    <path
+        android:fillColor="#080808"
+        android:pathData="M61.29 53.09V56.3H60.29V47.96H61.29V48.88Q61.6 48.34 62.08 48.08Q62.56 47.82 63.22 47.82Q64.32 47.82 65.01 48.69Q65.69 49.56 65.69 50.99Q65.69 52.41 65.01 53.28Q64.32 54.16 63.22 54.16Q62.56 54.16 62.08 53.89Q61.6 53.63 61.29 53.09ZM64.66 50.99Q64.66 49.89 64.21 49.27Q63.76 48.65 62.98 48.65Q62.19 48.65 61.74 49.27Q61.29 49.89 61.29 50.99Q61.29 52.08 61.74 52.7Q62.19 53.33 62.98 53.33Q63.76 53.33 64.21 52.7Q64.66 52.08 64.66 50.99ZM70.84 48.89Q70.67 48.79 70.47 48.75Q70.28 48.7 70.04 48.7Q69.2 48.7 68.75 49.25Q68.3 49.8 68.3 50.82V54H67.3V47.96H68.3V48.9Q68.61 48.35 69.11 48.08Q69.61 47.82 70.33 47.82Q70.43 47.82 70.56 47.83Q70.68 47.84 70.83 47.87ZM74.62 50.97Q73.42 50.97 72.96 51.24Q72.49 51.51 72.49 52.18Q72.49 52.71 72.84 53.02Q73.19 53.33 73.79 53.33Q74.61 53.33 75.11 52.74Q75.61 52.16 75.61 51.19V50.97ZM76.6 50.56V54H75.61V53.08Q75.27 53.63 74.76 53.89Q74.25 54.16 73.52 54.16Q72.59 54.16 72.05 53.64Q71.5 53.12 71.5 52.24Q71.5 51.22 72.18 50.71Q72.86 50.19 74.22 50.19H75.61V50.09Q75.61 49.41 75.16 49.03Q74.71 48.66 73.89 48.66Q73.38 48.66 72.89 48.78Q72.39 48.91 71.94 49.15V48.24Q72.49 48.03 73 47.92Q73.51 47.82 74 47.82Q75.31 47.82 75.95 48.5Q76.6 49.18 76.6 50.56Z" />
+</vector>

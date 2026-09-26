@@ -18,7 +18,6 @@
 
 package com.github.jksiezni.xpra.client
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -33,7 +32,11 @@ import timber.log.Timber
 
 /**
  * Battery optimisations let Android cut the network of apps in the background, ie: while the
- * screen is off, which drops the connection: the app asks to be exempted.
+ * screen is off, which drops the connection: the app asks the user to exempt it.
+ *
+ * It opens the battery optimisation settings, rather than asking directly with
+ * ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: Google Play only allows the permission that
+ * needs to a few kinds of apps, which a remote desktop client is not one of.
  */
 object BackgroundRunning {
 
@@ -67,22 +70,23 @@ object BackgroundRunning {
     }
 
     /**
-     * Asks Android to exempt the app, or shows the settings where it can be changed back.
+     * Shows the settings where the app can be exempted, or changed back: the battery
+     * optimisation list, or else the settings of the app, where some phones keep it.
      */
-    @SuppressLint("BatteryLife")
     fun request(activity: Activity) {
-        val intent = if (isAllowed(activity)) {
-            Toast.makeText(activity, R.string.background_running_allowed, Toast.LENGTH_LONG).show()
-            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        val hint = if (isAllowed(activity)) {
+            activity.getString(R.string.background_running_allowed)
         } else {
-            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + activity.packageName))
+            activity.getString(R.string.background_running_how, activity.getString(R.string.app_name))
         }
+        Toast.makeText(activity, hint, Toast.LENGTH_LONG).show()
         try {
-            activity.startActivity(intent)
+            activity.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         } catch (e: ActivityNotFoundException) {
             Timber.w(e, "No battery optimisation settings")
             try {
-                activity.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.fromParts("package", activity.packageName, null)))
             } catch (e2: ActivityNotFoundException) {
                 Toast.makeText(activity, R.string.background_running_unavailable, Toast.LENGTH_LONG).show()
             }
