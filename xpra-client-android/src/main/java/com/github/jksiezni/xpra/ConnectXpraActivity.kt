@@ -22,6 +22,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withStarted
+import com.github.jksiezni.xpra.client.ConnectionErrors
 import com.github.jksiezni.xpra.client.ConnectionEventListener
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.config.ConfigDatabase
@@ -102,7 +103,7 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
         lifecycleScope.launch {
             withStarted {
                 binding.connectProgressBar.visibility = View.GONE
-                binding.connectionLabel.text = e.message
+                binding.connectionLabel.text = ConnectionErrors.describe(this@ConnectXpraActivity, serverDetails, e)
             }
         }
     }

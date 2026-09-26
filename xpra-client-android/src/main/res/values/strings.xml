@@ -56,6 +56,14 @@
     <!-- ie: "Delete Rock5b?" -->
     <string name="delete_server_title">Delete %1$s?</string>
     <string name="delete_server_message">Its settings, saved passwords and private key are removed from this device.</string>
+    <string name="error_unknown_host">Cannot find %1$s: check the host name and the network</string>
+    <string name="error_refused">%1$s refuses connections on port %2$d: check the port, and that the server is running</string>
+    <string name="error_timeout">%1$s does not answer: check the host name and the network</string>
+    <string name="error_ssh_auth">SSH login failed: check the user name, the password or the key</string>
+    <string name="error_ssh_host_key">The SSH host key of the server was not accepted</string>
+    <string name="error_connection">The connection failed</string>
+    <!-- a window without a title, whose application is unknown -->
+    <string name="untitled_window">Untitled window</string>
     <string name="remember_password">Remember password</string>
     <string name="forget_passwords">Forget saved passwords</string>
     <string name="forget_passwords_summary">Saved passwords are encrypted with a key that never leaves this device</string>
