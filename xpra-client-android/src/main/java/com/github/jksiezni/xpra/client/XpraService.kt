@@ -67,6 +67,8 @@ class XpraService : Service() {
     private var userDisconnected = false
     private var reconnecting = false
     private var reconnectAttempts = 0
+    /** the connection to start once the previous one has ended, see [startConnection] */
+    private var pendingStart: (() -> Unit)? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -97,68 +99,109 @@ class XpraService : Service() {
         if (intent != null && ACTION_STOP == intent.action) {
             disconnect()
         }
-        return super.onStartCommand(intent, flags, startId)
+        // after the app was killed, there is no connection to restore: the service is not
+        // started again
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent): IBinder? {
         return LocalBinder()
     }
 
-    @Throws(IOException::class)
+    /**
+     * Connects to the server: called by the screen the user connects from, while it is shown.
+     */
     fun connect(serverDetails: ServerDetails, userInfoHandler: SshUserInfoHandler) {
         cancelReconnect()
         userDisconnected = false
         this.userInfoHandler = userInfoHandler
+        // while the app is in the foreground: Android does not allow it from the background,
+        // ie: if the user leaves the app while the server is slow to answer
+        goForeground(getString(R.string.connecting_to, serverDetails.name))
         startConnection(serverDetails, userInfoHandler, reconnect = false)
     }
 
-    @Throws(IOException::class)
+    /**
+     * Starts a connection, or reports why it cannot start.
+     */
     private fun startConnection(serverDetails: ServerDetails, userInfoHandler: SshUserInfoHandler, reconnect: Boolean) {
-        this.serverDetails = serverDetails
-        connector = prepareConnector(serverDetails, userInfoHandler).apply {
-            addListener(object : XpraConnector.ConnectionListener {
-                private var connected = false
-                private var ended = false
-
-                override fun onConnected() {
-                    connected = true
-                    mainHandler.post {
-                        reconnecting = false
-                        reconnectAttempts = 0
-                        if (reconnect) {
-                            userInfoHandler.onConnected()
-                        }
-                        onConnect(serverDetails)
-                        connectionObserver.onConnected(serverDetails)
-                    }
-                }
-
-                override fun onDisconnected() {
-                    end(null)
-                }
-
-                override fun onConnectionError(e: IOException) {
-                    end(e)
-                }
-
-                /** connectors report an error, then the disconnection: handle the end once */
-                private fun end(e: IOException?) {
-                    if (ended) {
-                        return
-                    }
-                    ended = true
-                    val lost = (connected || reconnect) && isLost()
-                    mainHandler.post { onConnectionEnded(serverDetails, e, lost) }
-                }
-            })
-            connect()
+        val previous = connector
+        if (previous != null && previous.isAlive) {
+            // it resets the client when it ends, which would break the new connection
+            Timber.i("Waiting for the previous connection to end")
+            previous.disconnect()
+            pendingStart = { startConnection(serverDetails, userInfoHandler, reconnect) }
+            return
         }
+        pendingStart = null
+        this.serverDetails = serverDetails
+        val newConnector = try {
+            prepareConnector(serverDetails, userInfoHandler)
+        } catch (e: IOException) {
+            Timber.w(e, "Cannot connect to %s", serverDetails.name)
+            onConnectionEnded(serverDetails, e, lost = reconnect)
+            return
+        }
+        connector = newConnector
+        newConnector.addListener(object : XpraConnector.ConnectionListener {
+            private var connected = false
+            private var ended = false
+
+            override fun onConnected() {
+                connected = true
+                mainHandler.post {
+                    if (userDisconnected || pendingStart != null || connector !== newConnector) {
+                        // it is being closed
+                        return@post
+                    }
+                    reconnecting = false
+                    reconnectAttempts = 0
+                    if (reconnect) {
+                        userInfoHandler.onConnected()
+                    }
+                    onConnect(serverDetails)
+                    connectionObserver.onConnected(serverDetails)
+                }
+            }
+
+            override fun onDisconnected() {
+                end(null)
+            }
+
+            override fun onConnectionError(e: IOException) {
+                end(e)
+            }
+
+            /** connectors report an error, then the disconnection: handle the end once */
+            private fun end(e: IOException?) {
+                if (ended) {
+                    return
+                }
+                ended = true
+                val lost = (connected || reconnect) && isLost()
+                mainHandler.post {
+                    if (connector !== newConnector) {
+                        return@post
+                    }
+                    val next = pendingStart
+                    if (next != null) {
+                        pendingStart = null
+                        connectionObserver.onDisconnected(serverDetails)
+                        next()
+                    } else {
+                        onConnectionEnded(serverDetails, e, lost)
+                    }
+                }
+            }
+        })
+        newConnector.connect()
     }
 
     fun disconnect() {
         userDisconnected = true
         cancelReconnect()
-        if (reconnecting && connector?.isRunning != true) {
+        pendingStart = null
+        if (reconnecting && connector?.isAlive != true) {
             // between two attempts: nothing to close
             serverDetails?.let { onConnectionEnded(it, null, lost = false) }
         } else {
@@ -222,19 +265,14 @@ class XpraService : Service() {
         if (!reconnecting || userDisconnected) {
             return
         }
-        if (connector?.isRunning == true) {
+        if (connector?.isAlive == true) {
             // the previous attempt is still ending
             scheduleReconnect(server)
             return
         }
         mainHandler.removeCallbacks(reconnectRunnable)
         reconnectAttempts++
-        try {
-            startConnection(server, handler.forReconnecting(this), reconnect = true)
-        } catch (e: IOException) {
-            Timber.w(e, "Cannot reconnect")
-            onConnectionEnded(server, e, lost = true)
-        }
+        startConnection(server, handler.forReconnecting(this), reconnect = true)
     }
 
     private fun cancelReconnect() {
@@ -295,13 +333,25 @@ class XpraService : Service() {
     }
 
     private fun onConnect(serverDetails: ServerDetails) {
-        startService(Intent(this, XpraService::class.java))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            setupNotificationChannel()
+        goForeground(getString(R.string.connected_to, serverDetails.name))
+    }
+
+    /**
+     * Keeps the app running while its windows are in the background, with a notification.
+     */
+    private fun goForeground(text: String) {
+        try {
+            startService(Intent(this, XpraService::class.java))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                setupNotificationChannel()
+            }
+            ServiceCompat.startForeground(this, 1, buildNotification(text),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } catch (e: RuntimeException) {
+            // ie: ForegroundServiceStartNotAllowedException, from the background: the connection
+            // works, but Android may stop it in the background
+            Timber.w(e, "Cannot run in the foreground")
         }
-        ServiceCompat.startForeground(this, 1,
-            buildNotification(getString(R.string.connected_to, serverDetails.name)),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
     }
 
     /**

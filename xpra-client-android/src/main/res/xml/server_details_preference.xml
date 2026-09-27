@@ -20,7 +20,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="General settings">
+    <PreferenceCategory android:title="General">
 
         <EditTextPreference
             android:inputType="text"
@@ -37,12 +37,11 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="Connection setup">
+    <PreferenceCategory android:title="Connection">
         <EditTextPreference
             android:inputType="text"
             android:key="host"
-            android:summary="Enter the hostname"
-            android:title="Hostname" />
+            android:title="Host name" />
         <EditTextPreference
             android:inputType="number"
             android:key="port"
@@ -55,11 +54,10 @@
             android:title="Display ID" />
 
         <PreferenceCategory
-            android:title="SSH Connection">
+            android:title="SSH">
             <EditTextPreference
                 android:key="username"
-                android:summary="Enter your username"
-                android:title="SSH Username" />
+                android:title="User name" />
             <Preference
                 android:key="private_keyfile"
                 android:summary="@string/ssh_private_key_summary"

@@ -26,7 +26,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.DialogFragment
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
-import xpra.protocol.packets.StartCommand
 
 /**
  *
@@ -60,7 +59,8 @@ class StartCommandDialogFragment : DialogFragment(), DialogInterface.OnClickList
                 val cmd = editText?.text?.trim().toString()
                 if (cmd.isNotBlank()) {
                     service.whenXpraAvailable { api ->
-                        api.xpraClient.sender.send(StartCommand(cmd, cmd))
+                        // ignored if the connection was lost meanwhile
+                        api.xpraClient.startCommand(cmd, cmd)
                     }
                 }
             }

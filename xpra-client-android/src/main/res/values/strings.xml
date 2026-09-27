@@ -24,12 +24,14 @@
     <string name="connection_type">Connection type</string>
 
     <string name="connected_to">Connected to %s</string>
+    <string name="connecting_to">Connecting to %s…</string>
+    <string name="invalid_port">The port must be from 1 to 65535</string>
     <string name="disconnect">Disconnect</string>
-    <string name="channel_name">Xpra Connection Channel</string>
-    <string name="save">save</string>
-    <string name="delete">delete</string>
-    <string name="title_server_name">Server Name</string>
-    <string name="enter_unique_name">Enter a unique name</string>
+    <string name="channel_name">Connection</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="title_server_name">Name</string>
+    <string name="enter_unique_name">Required</string>
     <string name="connecting">Connecting…</string>
     <string name="picture_encoding">Picture Encoding</string>
     <string name="advanced">Advanced</string>
@@ -37,44 +39,45 @@
     <string name="automatic">Automatic</string>
     <string name="edit">edit</string>
     <string name="start">start</string>
-    <string name="no_connections_label">You have no connections defined</string>
+    <string name="no_connections_label">No servers yet: tap + to add one</string>
     <string name="open">open</string>
-    <string name="exit">exit</string>
-    <string name="keyboard">keyboard</string>
-    <string name="already_connected">A single connection is supported now.</string>
-    <string name="no_tasks_label">No active tasks</string>
+    <string name="exit">Close</string>
+    <string name="keyboard">Keyboard</string>
+    <string name="already_connected">Disconnect from the current server first</string>
+    <string name="no_tasks_label">No windows or apps yet</string>
     <string name="start_command">Start command</string>
     <string name="cancel">Cancel</string>
-    <string name="hint_start_cmd">ex. xterm</string>
+    <string name="hint_start_cmd">e.g. xterm</string>
 
     <string name="ssh_private_key">SSH private key</string>
-    <string name="ssh_private_key_summary">None: log in with a password. Tap to choose a key file, ie: id_ed25519</string>
+    <string name="ssh_private_key_summary">None: log in with a password. Tap to choose a key file, e.g. id_ed25519</string>
     <string name="choose_another_key">Choose another key</string>
     <string name="remove_key">Remove the key</string>
-    <string name="invalid_private_key">This file is not an SSH private key</string>
+    <string name="invalid_private_key">Not an SSH private key</string>
     <string name="unreadable_private_key">This file cannot be read</string>
     <!-- ie: "Delete Rock5b?" -->
     <string name="delete_server_title">Delete %1$s?</string>
-    <string name="delete_server_message">Its settings, saved passwords and private key are removed from this device.</string>
+    <string name="delete_server_message">Its settings, saved passwords and key are removed from this device.</string>
     <string name="error_unknown_host">Cannot find %1$s: check the host name and the network</string>
-    <string name="error_refused">%1$s refuses connections on port %2$d: check the port, and that the server is running</string>
+    <string name="error_refused">%1$s refused the connection on port %2$d: check the port and that Xpra is running</string>
     <string name="error_timeout">%1$s does not answer: check the host name and the network</string>
-    <string name="error_ssh_auth">SSH login failed: check the user name, the password or the key</string>
-    <string name="error_ssh_host_key">The SSH host key of the server was not accepted</string>
+    <string name="error_ssh_auth">SSH login failed: check the user name, password or key</string>
+    <string name="error_ssh_host_key">The server\'s SSH host key was not accepted</string>
     <string name="error_connection">The connection failed</string>
     <!-- a window without a title, whose application is unknown -->
     <string name="untitled_window">Untitled window</string>
     <string name="remember_password">Remember password</string>
+    <string name="show_password">Show password</string>
     <string name="forget_passwords">Forget saved passwords</string>
-    <string name="forget_passwords_summary">Saved passwords are encrypted with a key that never leaves this device</string>
+    <string name="forget_passwords_summary">They are encrypted with a key that never leaves this device</string>
     <string name="no_saved_passwords">No saved passwords</string>
     <string name="passwords_forgotten">Saved passwords forgotten</string>
     <string name="touchpad_mode">Touchpad mode</string>
     <string name="direct_touch_mode">Direct touch mode</string>
-    <string name="touchpad_mode_on">Touchpad: move the pointer with a finger, tap to click</string>
+    <string name="touchpad_mode_on">Touchpad: drag to move the pointer, tap to click</string>
     <string name="direct_touch_mode_on">Direct touch: tap where you want to click</string>
     <string name="clipboard_sharing">Share the clipboard</string>
-    <string name="clipboard_sharing_summary">Text copied on this device can be pasted on the server, and the other way round</string>
+    <string name="clipboard_sharing_summary">Copy and paste between this device and the server</string>
     <!-- a modifier key held down until tapped again, ie: "Ctrl 🔒" -->
     <string name="locked_key">%1$s 🔒</string>
     <string name="show_toolbar">Show the toolbar</string>
@@ -83,13 +86,13 @@
     <string name="scale_percent">Scale %1$d%%</string>
     <string name="reconnecting_to">Connection lost, reconnecting to %1$s…</string>
     <string name="reconnecting">Connection lost, reconnecting…</string>
-    <string name="app_window_timeout">Wait for the window of a started app</string>
-    <string name="app_window_timeout_hint">In seconds, 0 to never give up</string>
+    <string name="app_window_timeout">Wait for app windows</string>
+    <string name="app_window_timeout_hint">In seconds, 0 to wait forever</string>
     <string name="app_window_timeout_seconds">%1$d seconds</string>
-    <string name="app_window_timeout_forever">Never give up</string>
+    <string name="app_window_timeout_forever">Forever</string>
     <string name="background_running_title">Run in the background</string>
-    <string name="background_running_message">Android\'s battery optimisations can cut the network of apps in the background, ie: while the screen is off, which drops the connection to the server. Your apps keep running on the server, and the connection is restored, but allowing this app to run in the background avoids the interruptions.\n\nSome phones, ie: Samsung ones, also put apps to sleep: see the battery settings of the app.</string>
-    <string name="background_running_allowed">Already allowed: the settings let you change it back</string>
+    <string name="background_running_message">Battery optimisation can cut the network while the screen is off, which drops the connection. It is restored, and your apps keep running on the server, but allowing background use avoids the interruptions.\n\nSome phones (e.g. Samsung) also put apps to sleep: check the app\'s battery settings too.</string>
+    <string name="background_running_allowed">Already allowed; you can change it back here</string>
     <!-- shown over the list of battery optimisations, as the app cannot be picked for the user -->
     <string name="background_running_how">Pick \"All apps\", then %1$s, then \"Don\'t optimise\"</string>
     <string name="background_running_unavailable">This phone has no battery optimisation settings</string>
@@ -97,37 +100,42 @@
     <string name="not_now">Not now</string>
     <string name="dont_ask_again">Don\'t ask again</string>
     <string name="video_decoding">Use video compression</string>
-    <string name="video_decoding_summary">For what changes a lot, ie: scrolling or videos: smoother, with less data, but text can be blurred for a moment. This device decodes: %1$s</string>
+    <string name="video_decoding_summary">Smoother scrolling and video with less data; text may blur for a moment. Supported here: %1$s</string>
     <string name="open_windows">Open windows</string>
     <string name="server_apps">Apps</string>
-    <string name="no_server_apps">The server has not sent any apps. It needs the python3-xdg package, and a menu file in /etc/xdg/menus, ie: from the lxmenu-data package.</string>
+    <string name="no_server_apps">The server sent no apps. It needs python3-xdg and a menu in /etc/xdg/menus (e.g. from lxmenu-data).</string>
     <string name="add_to_home_screen">Add to home screen</string>
-    <string name="pin_not_supported">Your launcher cannot add icons to the home screen</string>
-    <string name="app_not_found">This window does not belong to an app the server knows</string>
+    <string name="pin_not_supported">Your launcher cannot add home screen icons</string>
+    <string name="app_not_found">The server does not know which app this window belongs to</string>
     <!-- the long label of a home screen icon, ie: "Geany on Rock5b" -->
     <string name="app_on_server">%1$s on %2$s</string>
     <string name="starting_app">Starting %1$s…</string>
     <string name="app_no_window">%1$s has not opened a window</string>
-    <string name="server_removed">This server is no longer on the list</string>
+    <string name="server_removed">This server was removed</string>
     <string name="cannot_start_apps">The server does not allow starting apps (start-new-commands is off)</string>
     <string name="switch_server_title">Switch server?</string>
-    <string name="switch_server_message">You are connected to %1$s. Disconnect from it and connect to %2$s?</string>
+    <string name="switch_server_message">Disconnect from %1$s and connect to %2$s?</string>
     <string name="switch_server">Switch</string>
     <!-- How to use -->
     <string name="how_to_use">How to use</string>
-    <string name="help_intro">This app shows the apps of an Xpra server: Xpra must already be running on the computer you connect to, ie: started with <tt>xpra start :100 --start=xterm</tt>. Connect to it over SSH, with 100 as the display, or add <tt>--bind-tcp=0.0.0.0:10000</tt> to connect over TCP, which is not encrypted. See <a href="https://xpra.org">xpra.org</a>.</string>
+    <string name="help_intro">This app shows the apps of an Xpra server, which must already run on the computer you connect to, e.g. started with <tt>xpra start :100 --start=xterm</tt>. Connect over SSH with display 100, or add <tt>--bind-tcp=0.0.0.0:10000</tt> to connect over TCP (not encrypted). See <a href="https://xpra.org">xpra.org</a>.</string>
     <string name="help_servers">Servers and apps</string>
-    <string name="help_add_server">Add a server. Tap it to connect, then "open" shows its windows and apps.</string>
-    <string name="help_pin_app">Add an app to the home screen: its icon connects and starts it in one tap. The ⋮ menu of a window can add its app too.</string>
+    <string name="help_add_server">Add a server and tap it to connect. "Open" shows its windows and apps.</string>
+    <string name="help_pin_app">Add an app to the home screen to connect and start it in one tap. A window\'s ⋮ menu can add its app too.</string>
     <string name="help_start_command">On a connected server, + starts any command.</string>
     <string name="help_touch">Touch</string>
     <string name="help_direct_touch">Direct touch: tap to click, drag to drag, long press to right-click, drag two fingers to scroll.</string>
-    <string name="help_touchpad">Touchpad: a finger moves the pointer. Tap to click, tap twice to double-click, tap then drag to drag, long press or tap with two fingers to right-click. This button switches between the two.</string>
+    <string name="help_touchpad">Touchpad: drag to move the pointer. Tap to click, tap twice to double-click, tap then drag to drag, long press or two-finger tap to right-click. This button switches modes.</string>
     <string name="help_zoom">Zoom</string>
-    <string name="help_pinch">Pinch to magnify the screen, ie: to read small text, and move the fingers to look around. Pinch back out to see all of it.</string>
-    <string name="help_volume_keys">The volume keys make the windows bigger or smaller, and sharp, rather than magnified. The size is kept for the server, and can also be set in its settings (Resolution).</string>
+    <string name="help_pinch">Pinch to magnify, e.g. to read small text, and drag two fingers to look around.</string>
+    <string name="help_volume_keys">The volume keys resize the windows instead, keeping them sharp. The size is saved for the server (see Resolution in its settings).</string>
     <string name="help_keyboard_title">Keyboard and windows</string>
-    <string name="help_keyboard">Shows the keyboard, with a row of Esc, Tab, Ctrl, Alt, the arrows and more. Tap Ctrl then a key for Ctrl+key; long press Ctrl to hold it down.</string>
-    <string name="help_close">Closes the window, on the server too.</string>
+    <string name="help_keyboard">Shows the keyboard, with extra keys: Esc, Tab, Ctrl, Alt, arrows and more. Tap Ctrl then a key for Ctrl+key; long press Ctrl to lock it.</string>
+    <string name="help_close">Closes the window on the server.</string>
     <string name="help_background">If the connection drops while the screen is off: ⋮ → Run in the background.</string>
+    <string name="enter_host">Required</string>
+    <string name="enter_username">Required</string>
+    <string name="name_required">Enter a name</string>
+    <string name="host_required">Enter a host name</string>
+    <string name="invalid_host">Invalid host name: %1$s</string>
 </resources>

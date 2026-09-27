@@ -63,8 +63,10 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
      */
     private int display = -1;
 
-    private Thread thread;
-    private Session session;
+    private volatile Thread thread;
+    /** the thread of the connection, until it ends: see {@link #isAlive()} */
+    private volatile Thread worker;
+    private volatile Session session;
 
     public SshXpraConnector(XpraClient client, String host) {
         this(client, host, null);
@@ -84,7 +86,7 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
     }
 
     @Override
-    public boolean connect() {
+    public synchronized boolean connect() {
         if (thread != null) {
             return false;
         }
@@ -92,13 +94,17 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
             session = jsch.getSession(username, host, port);
             session.setUserInfo(userInfo);
             //disableStrictHostKeyChecking();
-
-            thread = new Thread(this);
-            thread.start();
         } catch (JSchException e) {
-            client.onConnectionError(new IOException(e));
+            // the listeners wait for the end of the connection, like when it fails later
+            final IOException error = new IOException(e);
+            client.onConnectionError(error);
+            fireOnConnectionErrorEvent(error);
+            fireOnDisconnectedEvent();
             return false;
         }
+        thread = new Thread(this, "XpraSshConnection");
+        worker = thread;
+        thread.start();
         return true;
     }
 
@@ -114,11 +120,24 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
 
     @Override
     public synchronized void disconnect() {
-        if (thread != null) {
-            if (!disconnectCleanly()) {
-                thread.interrupt();
-            }
+        final Thread t = thread;
+        if (t != null) {
             thread = null;
+            if (disconnectCleanly()) {
+                // a server which cannot be reached any more never closes the connection
+                Later.run(this::closeSession, TcpXpraConnector.DISCONNECT_GRACE_MS);
+            } else {
+                // still connecting, or waiting for the user to type a password
+                t.interrupt();
+                Later.run(this::closeSession, 0);
+            }
+        }
+    }
+
+    private void closeSession() {
+        final Session s = session;
+        if (s != null) {
+            s.disconnect();
         }
     }
 
@@ -133,18 +152,33 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
 
     @Override
     public boolean isRunning() {
-        return thread != null && thread.isAlive();
+        final Thread t = thread;
+        return t != null && t.isAlive();
+    }
+
+    @Override
+    public boolean isAlive() {
+        final Thread t = worker;
+        return t != null && t.isAlive();
     }
 
     @Override
     public void run() {
         // the remote xpra command reports its errors on stderr:
         final ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        final Session session = this.session;
         try {
+            if (Thread.currentThread() != thread) {
+                throw new IOException("Connection cancelled");
+            }
             session.setServerAliveInterval(1000);
             session.setServerAliveCountMax(15);
             logger.debug("Keep-alive interval={}, maxAliveCount={}", session.getServerAliveInterval(), session.getServerAliveCountMax());
             session.connect(CONNECT_TIMEOUT_MS);
+            if (Thread.currentThread() != thread) {
+                // disconnected while the session was being set up
+                throw new IOException("Connection cancelled");
+            }
             final Channel channel = session.openChannel("exec");
             ((ChannelExec) channel).setCommand(getProxyCommand(display));
             ((ChannelExec) channel).setErrStream(stderr, true);
@@ -162,15 +196,18 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
             final IOException error = withRemoteError(e, stderr);
             client.onConnectionError(error);
             fireOnConnectionErrorEvent(error);
+        } catch (RuntimeException e) {
+            // ie: data which cannot be read: not a reason to crash the app
+            final IOException error = new IOException(e.getMessage(), e);
+            client.onConnectionError(error);
+            fireOnConnectionErrorEvent(error);
         } finally {
             logger.info("Finnished Xpra connection!");
             if (client.getSender() != null) try {
                 client.getSender().close();
             } catch (IOException ignore) {
             }
-            if (session != null) {
-                session.disconnect();
-            }
+            session.disconnect();
             client.onDisconnect();
             fireOnDisconnectedEvent();
         }

@@ -88,7 +88,7 @@ class ServerDetails : Serializable {
         }
 
     override fun toString(): String {
-        return name!!
+        return name.orEmpty()
     }
 
     override fun equals(other: Any?): Boolean {

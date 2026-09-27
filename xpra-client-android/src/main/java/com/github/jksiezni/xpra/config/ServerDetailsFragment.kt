@@ -20,6 +20,7 @@ package com.github.jksiezni.xpra.config
 
 import android.net.Uri
 import android.os.Bundle
+import android.text.InputType
 import android.util.Patterns
 import android.view.Menu
 import android.view.MenuInflater
@@ -85,8 +86,8 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
 
     private fun setupPreferences() {
         findPreference<Preference>(ServerDetailsDataStore.PREF_NAME)?.summaryProvider = EditTextSummaryProvider(getString(R.string.enter_unique_name))
-        findPreference<Preference>(ServerDetailsDataStore.PREF_HOST)?.summaryProvider = EditTextSummaryProvider(getString(R.string.enter_unique_name))
-        findPreference<Preference>(ServerDetailsDataStore.PREF_USERNAME)?.summaryProvider = EditTextSummaryProvider(getString(R.string.enter_unique_name))
+        findPreference<Preference>(ServerDetailsDataStore.PREF_HOST)?.summaryProvider = EditTextSummaryProvider(getString(R.string.enter_host))
+        findPreference<Preference>(ServerDetailsDataStore.PREF_USERNAME)?.summaryProvider = EditTextSummaryProvider(getString(R.string.enter_username))
         findPreference<Preference>(ServerDetailsDataStore.PREF_DISPLAY_ID)?.summaryProvider = DisplayIdSummaryProvider(getString(R.string.automatic))
         findPreference<Preference>(ServerDetailsDataStore.PREF_VIDEO)?.summary =
             getString(R.string.video_decoding_summary, VideoDecoders.describe())
@@ -99,6 +100,18 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
                     getString(R.string.app_window_timeout_seconds, seconds)
                 }
             }
+
+        // android:inputType is not applied by the AndroidX preferences: numbers only
+        findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_PORT)?.setOnBindEditTextListener {
+            it.inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_DISPLAY_ID)?.setOnBindEditTextListener {
+            // -1 for automatic
+            it.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
+        }
+        findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_APP_WINDOW_TIMEOUT)?.setOnBindEditTextListener {
+            it.inputType = InputType.TYPE_CLASS_NUMBER
+        }
 
         findPreference<ListPreference>(ServerDetailsDataStore.PREF_CONNECTION_TYPE)?.let {
             it.setOnPreferenceChangeListener { _, newValue ->
@@ -231,7 +244,7 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
 
     private fun validateName(name: String?): Boolean {
         if (name == null || name.isEmpty()) {
-            Toast.makeText(activity, "The connection name must not be empty.", Toast.LENGTH_LONG).show()
+            Toast.makeText(activity, R.string.name_required, Toast.LENGTH_LONG).show()
             return false
         }
         //		else if (!connectionDao.queryForEq("name", name).isEmpty()) {
@@ -243,12 +256,12 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
 
     private fun validateHostname(host: String?): Boolean {
         if (host == null || host.isEmpty()) {
-            Toast.makeText(activity, "The hostname must not be empty.", Toast.LENGTH_LONG).show()
+            Toast.makeText(activity, R.string.host_required, Toast.LENGTH_LONG).show()
             return false
         } else if (!HOSTNAME_PATTERN.matcher(host).matches()) {
             val matcher = Patterns.IP_ADDRESS.matcher(host)
             if (!matcher.matches()) {
-                Toast.makeText(activity, "Invalid hostname: $host", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, getString(R.string.invalid_host, host), Toast.LENGTH_LONG).show()
                 return false
             }
         }
@@ -256,7 +269,16 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
     }
 
     private fun validate(serverDetails: ServerDetails): Boolean {
-        return validateName(serverDetails.name) && validateHostname(serverDetails.host)
+        return validateName(serverDetails.name) && validateHostname(serverDetails.host) &&
+            validatePort(serverDetails.port)
+    }
+
+    private fun validatePort(port: Int): Boolean {
+        if (port !in 1..65535) {
+            Toast.makeText(activity, R.string.invalid_port, Toast.LENGTH_LONG).show()
+            return false
+        }
+        return true
     }
 
     companion object {

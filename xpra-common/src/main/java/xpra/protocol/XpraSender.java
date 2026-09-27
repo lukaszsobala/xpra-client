@@ -100,7 +100,8 @@ public final class XpraSender implements Closeable {
                 headerChunk.writeHeader(outputStream);
                 outputStream.write(byteStream.getBytes(), 0, packetSize);
                 outputStream.flush();
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
+                // a packet which cannot be encoded must not end the thread, nor crash the app
                 logger.error("Failed to send packet: " + list.get(0), e);
             }
         }

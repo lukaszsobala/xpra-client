@@ -38,6 +38,12 @@ public abstract class XpraConnector {
 
     public abstract boolean isRunning();
 
+    /**
+     * Whether the thread of the connection still runs: after {@link #disconnect()}, it may take
+     * a moment to end, and it resets the client when it does.
+     */
+    public abstract boolean isAlive();
+
     public void addListener(ConnectionListener listener) {
         synchronized (listeners) {
             listeners.add(listener);

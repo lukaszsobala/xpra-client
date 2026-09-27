@@ -91,4 +91,14 @@ internal class GLDrawTarget(
 
     fun isEglSurface(surface: EglSurfaceBase) : Boolean = eglSurface == surface
 
+    /**
+     * Frees the texture and the window surface, once the window is gone.
+     *
+     * @param baseSurface the surface which is current, and which the target goes back to
+     */
+    fun release(baseSurface: EglSurfaceBase) {
+        setTarget(baseSurface)
+        GLES20.glDeleteTextures(1, intArrayOf(texture), 0)
+    }
+
 }

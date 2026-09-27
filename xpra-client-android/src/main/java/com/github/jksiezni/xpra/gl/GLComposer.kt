@@ -25,6 +25,7 @@ import android.opengl.GLES20
 import android.opengl.GLUtils
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Message
 import android.os.SystemClock
 import com.android.grafika.gles.*
 import timber.log.Timber
@@ -61,6 +62,22 @@ class GLComposer(
     }
 
     private val handler: Handler by lazyHandler(this) { msg ->
+        try {
+            process(msg)
+        } catch (e: RuntimeException) {
+            // ie: a GL error, or a surface which went away: one window is not drawn, rather than
+            // the whole app crashing
+            Timber.e(e, "Failed to handle message %d", msg.what)
+            val packet = msg.obj as? DrawPacket
+            if (packet != null && !packet.encoding.isVideo) {
+                // the server then sends the window again
+                callback.onComposed(packet, DECODE_ERROR)
+            }
+        }
+        true
+    }
+
+    private fun process(msg: Message) {
         when (msg.what) {
             MSG_CREATE_DRAW_TARGET -> {
                 val windowId = msg.arg1
@@ -71,7 +88,8 @@ class GLComposer(
                 val windowId = msg.arg1
                 Timber.v("MSG_REMOVE_DRAW_TARGET $windowId")
                 baseSurface.makeCurrent()
-                drawTargets.remove(windowId)
+                // frees the memory of the texture, which is as big as the window
+                drawTargets.remove(windowId)?.release(baseSurface)
                 closeVideo(windowId)
             }
             MSG_ADD_SURFACE_TEX -> {
@@ -98,7 +116,6 @@ class GLComposer(
                 composePacket(packet)
             }
         }
-        true
     }
 
     private lateinit var frameRect: FullFrameRect
