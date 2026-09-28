@@ -20,8 +20,12 @@ package com.github.jksiezni.xpra.connection
 
 import android.app.Dialog
 import android.content.DialogInterface
+import android.graphics.Typeface
 import android.os.Bundle
+import android.text.InputType
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.DialogFragment
 import com.github.jksiezni.xpra.R
@@ -39,7 +43,20 @@ class StartCommandDialogFragment : DialogFragment(), DialogInterface.OnClickList
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         editText = EditText(requireContext()).apply {
             hint = getString(R.string.hint_start_cmd)
-
+            // a command line, not a sentence: no capital letter, suggestions or auto-correction
+            inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
+                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            typeface = Typeface.MONOSPACE
+            imeOptions = EditorInfo.IME_ACTION_GO or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_GO) {
+                    (dialog as? AlertDialog)?.getButton(DialogInterface.BUTTON_POSITIVE)?.performClick()
+                    true
+                } else {
+                    false
+                }
+            }
         }
         return MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.start_command)

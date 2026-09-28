@@ -75,6 +75,11 @@ class ServerDetailsAdapter : ListAdapter<ServerDetails, ServerDetailsAdapter.Vie
             holder.secondaryBtn.setTextColor(ColorStateList.valueOf(context.getColor(com.google.android.material.R.color.design_default_color_error)))
             holder.secondaryBtn.setText(R.string.disconnect)
             holder.primaryBtn.setText(R.string.open)
+        } else {
+            // the view may be reused from a connected server
+            holder.secondaryBtn.setTextColor(holder.secondaryTextColors)
+            holder.secondaryBtn.setText(R.string.edit)
+            holder.primaryBtn.setText(R.string.connect)
         }
     }
 
@@ -91,6 +96,8 @@ class ServerDetailsAdapter : ListAdapter<ServerDetails, ServerDetailsAdapter.Vie
         val typeView: TextView = itemView.findViewById(R.id.connection_type)
         val secondaryBtn: Button = itemView.findViewById(R.id.connection_edit)
         val primaryBtn: Button = itemView.findViewById(R.id.connection_start)
+        /** the colours of the layout, as "Disconnect" is shown in red */
+        val secondaryTextColors: ColorStateList = secondaryBtn.textColors
     }
 
     companion object {
