@@ -37,10 +37,11 @@
     <string name="advanced">Advanced</string>
     <string name="resolution">Resolution</string>
     <string name="automatic">Automatic</string>
-    <string name="edit">edit</string>
-    <string name="start">start</string>
+    <string name="edit">Edit</string>
+    <string name="start">Start</string>
+    <string name="connect">Connect</string>
     <string name="no_connections_label">No servers yet: tap + to add one</string>
-    <string name="open">open</string>
+    <string name="open">Open</string>
     <string name="exit">Close</string>
     <string name="keyboard">Keyboard</string>
     <string name="already_connected">Disconnect from the current server first</string>
@@ -64,6 +65,14 @@
     <string name="error_ssh_auth">SSH login failed: check the user name, password or key</string>
     <string name="error_ssh_host_key">The server\'s SSH host key was not accepted</string>
     <string name="error_connection">The connection failed</string>
+    <string name="error_no_xpra">Xpra was not found on %1$s: install it there (see xpra.org), or add it to the PATH of SSH logins</string>
+    <!-- ie: "No Xpra server is running on rock5b (display :100)" -->
+    <string name="error_no_server">No Xpra server is running on %1$s (display :%2$d)</string>
+    <string name="start_server_title">Start an Xpra server?</string>
+    <!-- ie: "No Xpra server is running on rock5b. Start one on display :100?" -->
+    <string name="start_server_message">No Xpra server is running on %1$s. Start one on display :%2$d?</string>
+    <string name="start_server_command_hint">Then start, e.g. xterm (optional)</string>
+    <string name="start_server">Start server</string>
     <!-- a window without a title, whose application is unknown -->
     <string name="untitled_window">Untitled window</string>
     <string name="remember_password">Remember password</string>
@@ -118,9 +127,9 @@
     <string name="switch_server">Switch</string>
     <!-- How to use -->
     <string name="how_to_use">How to use</string>
-    <string name="help_intro">This app shows the apps of an Xpra server, which must already run on the computer you connect to, e.g. started with <tt>xpra start :100 --start=xterm</tt>. Connect over SSH with display 100, or add <tt>--bind-tcp=0.0.0.0:10000</tt> to connect over TCP (not encrypted). See <a href="https://xpra.org">xpra.org</a>.</string>
+    <string name="help_intro">This app shows the apps of an Xpra server on the computer you connect to. Over SSH, it offers to start one when none is running (Xpra must be installed there). Or start it yourself, e.g. with <tt>xpra start :100 --start=xterm</tt>, and connect over SSH with display 100, or add <tt>--bind-tcp=0.0.0.0:10000</tt> to connect over TCP (not encrypted). See <a href="https://xpra.org">xpra.org</a>.</string>
     <string name="help_servers">Servers and apps</string>
-    <string name="help_add_server">Add a server and tap it to connect. "Open" shows its windows and apps.</string>
+    <string name="help_add_server">Add a server and tap \"Connect\". \"Open\" shows its windows and apps.</string>
     <string name="help_pin_app">Add an app to the home screen to connect and start it in one tap. A window\'s ⋮ menu can add its app too.</string>
     <string name="help_start_command">On a connected server, + starts any command.</string>
     <string name="help_touch">Touch</string>

@@ -22,6 +22,7 @@ import android.app.Dialog
 import android.content.DialogInterface
 import android.os.Bundle
 import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.DialogFragment
 import com.github.jksiezni.xpra.R
@@ -39,7 +40,9 @@ class StartCommandDialogFragment : DialogFragment(), DialogInterface.OnClickList
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         editText = EditText(requireContext()).apply {
             hint = getString(R.string.hint_start_cmd)
-
+            CommandInput.configure(this) {
+                (dialog as? AlertDialog)?.getButton(DialogInterface.BUTTON_POSITIVE)?.performClick()
+            }
         }
         return MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.start_command)

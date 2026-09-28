@@ -18,4 +18,6 @@
     <dimen name="compact_toolbar_subtitle_size">12sp</dimen>
 
     <dimen name="app_icon_size">40dp</dimen>
+    <!-- around a text field in a dialog, like its message -->
+    <dimen name="dialog_field_padding">24dp</dimen>
 </resources>
