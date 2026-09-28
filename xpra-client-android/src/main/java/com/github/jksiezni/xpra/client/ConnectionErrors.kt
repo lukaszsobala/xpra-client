@@ -26,6 +26,8 @@ import java.net.ConnectException
 import java.net.NoRouteToHostException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import xpra.network.NoServerException
+import xpra.network.XpraNotFoundException
 
 /**
  * Explains why a connection failed, rather than showing the message of the exception,
@@ -37,6 +39,11 @@ object ConnectionErrors {
         val causes = generateSequence(e) { it.cause }.take(10).toList()
         val jsch = causes.filterIsInstance<JSchException>().firstOrNull()?.message.orEmpty()
         return when {
+            causes.any { it is XpraNotFoundException } ->
+                context.getString(R.string.error_no_xpra, server.host)
+            causes.any { it is NoServerException } ->
+                context.getString(R.string.error_no_server, server.host,
+                    causes.filterIsInstance<NoServerException>().first().display)
             causes.any { it is UnknownHostException } ->
                 context.getString(R.string.error_unknown_host, server.host)
             causes.any { it is ConnectException } ->

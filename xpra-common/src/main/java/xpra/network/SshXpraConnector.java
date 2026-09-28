@@ -23,6 +23,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +56,21 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
         "xpra", "$XDG_RUNTIME_DIR/xpra/run-xpra", "/usr/local/bin/xpra", "~/.xpra/run-xpra"
     };
 
+    /** printed on stderr by the remote commands when none of {@link #REMOTE_XPRA} exists */
+    static final String XPRA_NOT_FOUND = "no xpra command found";
+
+    /** separates the sessions listed by xpra from the X displays in use, see {@link #getListCommand()} */
+    private static final String X11_MARKER = "--x11-sockets--";
+
+    /** ie: "LIVE session at :100", as printed by "xpra list" */
+    private static final Pattern SESSION = Pattern.compile("\\b(LIVE|DEAD|UNKNOWN)\\b.*?:(\\d+)\\b");
+
+    /** a socket of /tmp/.X11-unix, ie: "X0" for display :0 */
+    private static final Pattern X11_SOCKET = Pattern.compile("^X(\\d+)$");
+
+    /** the displays used for the servers started by this client, like Xpra's own examples */
+    static final int FIRST_DISPLAY = 100;
+
     private final JSch jsch = new JSch();
 
     private final UserInfo userInfo;
@@ -62,6 +82,11 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
      * The display to connect to, or -1 to let the server pick its only session.
      */
     private int display = -1;
+
+    /** asks whether to start a server when none is running, or null to never start one */
+    private volatile ServerStarter serverStarter;
+    /** the display of the server this connection started, or -1 */
+    private volatile int startedDisplay = -1;
 
     private volatile Thread thread;
     /** the thread of the connection, until it ends: see {@link #isAlive()} */
@@ -179,8 +204,9 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
                 // disconnected while the session was being set up
                 throw new IOException("Connection cancelled");
             }
+            final String command = chooseRemoteCommand(session);
             final Channel channel = session.openChannel("exec");
-            ((ChannelExec) channel).setCommand(getProxyCommand(display));
+            ((ChannelExec) channel).setCommand(command);
             ((ChannelExec) channel).setErrStream(stderr, true);
             channel.connect();
 
@@ -244,6 +270,147 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
     }
 
     /**
+     * Checks which Xpra servers are running before connecting, to offer starting one when there
+     * is none: for the connections made by the user, never when reconnecting, which would start
+     * again a server the user stopped.
+     */
+    public void setServerStarter(ServerStarter starter) {
+        this.serverStarter = starter;
+    }
+
+    /**
+     * @return the display of the server started by this connection, or -1
+     */
+    public int getStartedDisplay() {
+        return startedDisplay;
+    }
+
+    /**
+     * Connects to the running server, or starts one if the user wants to.
+     */
+    private String chooseRemoteCommand(Session session) throws JSchException, IOException {
+        final ServerStarter starter = serverStarter;
+        if (starter == null) {
+            return getProxyCommand(display);
+        }
+        final ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        final String output = runCommand(session, getListCommand(), stderr);
+        if (output.contains(XPRA_NOT_FOUND) || stderr.toString(StandardCharsets.UTF_8.name()).contains(XPRA_NOT_FOUND)) {
+            throw new XpraNotFoundException();
+        }
+        final Sessions sessions = Sessions.parse(output);
+        final int toStart = sessions.displayToStart(display);
+        if (toStart < 0) {
+            return getProxyCommand(display);
+        }
+        final String startCommand;
+        try {
+            startCommand = starter.askToStart(toStart);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Connection cancelled", e);
+        }
+        if (Thread.currentThread() != thread) {
+            throw new IOException("Connection cancelled");
+        }
+        if (startCommand == null) {
+            throw new NoServerException(toStart);
+        }
+        logger.info("Starting an Xpra server on :{}", toStart);
+        startedDisplay = toStart;
+        return getStartCommand(toStart, startCommand);
+    }
+
+    /**
+     * Runs a command on the server, and returns what it printed on stdout.
+     */
+    private static String runCommand(Session session, String command, ByteArrayOutputStream stderr)
+            throws JSchException, IOException {
+        final ChannelExec channel = (ChannelExec) session.openChannel("exec");
+        try {
+            channel.setCommand(command);
+            channel.setErrStream(stderr, true);
+            final InputStream in = channel.getInputStream();
+            channel.connect(CONNECT_TIMEOUT_MS);
+            final ByteArrayOutputStream out = new ByteArrayOutputStream();
+            final byte[] buffer = new byte[4096];
+            int n;
+            while ((n = in.read(buffer)) >= 0) {
+                out.write(buffer, 0, n);
+            }
+            return out.toString(StandardCharsets.UTF_8.name());
+        } finally {
+            channel.disconnect();
+        }
+    }
+
+    /**
+     * The Xpra sessions of the server, from {@link #getListCommand()}.
+     */
+    static final class Sessions {
+        /** whether the output came from "xpra list": otherwise nothing is known */
+        final boolean known;
+        final Set<Integer> live = new TreeSet<>();
+        /** the displays not to start a server on: of the other sessions, or of other X servers */
+        final Set<Integer> used = new TreeSet<>();
+
+        private Sessions(boolean known) {
+            this.known = known;
+        }
+
+        static Sessions parse(String output) {
+            final String[] parts = output.split(X11_MARKER, 2);
+            final String list = parts[0];
+            final Matcher m = SESSION.matcher(list);
+            boolean found = false;
+            final Sessions sessions = new Sessions(true);
+            while (m.find()) {
+                found = true;
+                final int d = Integer.parseInt(m.group(2));
+                sessions.used.add(d);
+                if ("LIVE".equals(m.group(1))) {
+                    sessions.live.add(d);
+                }
+            }
+            // ie: "Found the following xpra sessions:" or "No xpra sessions found"
+            if (!found && !list.toLowerCase(Locale.ROOT).contains("xpra sessions")) {
+                return new Sessions(false);
+            }
+            if (parts.length > 1) {
+                for (String line : parts[1].split("\\r?\\n")) {
+                    final Matcher x = X11_SOCKET.matcher(line.trim());
+                    if (x.matches()) {
+                        sessions.used.add(Integer.parseInt(x.group(1)));
+                    }
+                }
+            }
+            return sessions;
+        }
+
+        /**
+         * @param display the display the user chose, or -1 for any
+         * @return the display to start a server on, or -1 to connect as usual: when a server is
+         * running, or when it cannot be known (then connecting reports the error)
+         */
+        int displayToStart(int display) {
+            if (!known) {
+                return -1;
+            }
+            if (display >= 0) {
+                return live.contains(display) ? -1 : display;
+            }
+            if (!live.isEmpty()) {
+                return -1;
+            }
+            int d = FIRST_DISPLAY;
+            while (used.contains(d)) {
+                ++d;
+            }
+            return d;
+        }
+    }
+
+    /**
      * Adds the error printed by the remote command, if the connection failed before the handshake completed.
      */
     private IOException withRemoteError(IOException e, ByteArrayOutputStream stderr) {
@@ -263,6 +430,11 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
         if (output.isEmpty()) {
             return e;
         }
+        if (output.contains(XPRA_NOT_FOUND)) {
+            final IOException notFound = new XpraNotFoundException();
+            notFound.initCause(e);
+            return notFound;
+        }
         // the last lines are the most relevant ones:
         final String[] lines = output.split("\\r?\\n");
         final StringBuilder message = new StringBuilder();
@@ -280,7 +452,37 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
      * locations of the xpra command like Xpra's own client does (see {@code xpra/net/ssh/exec_client.py}).
      */
     static String getProxyCommand(int display) {
-        final String args = display >= 0 ? " _proxy :" + display : " _proxy";
+        return sh(xpraScript(display >= 0 ? " _proxy :" + display : " _proxy"));
+    }
+
+    /**
+     * Starts a server on the display and connects to it, like "xpra start ssh://host/:100" does.
+     *
+     * @param startCommand the command to start in the server, or empty for none
+     */
+    static String getStartCommand(int display, String startCommand) {
+        final String start = startCommand.trim();
+        return sh(xpraScript(" _proxy_start :" + display + (start.isEmpty() ? "" : " " + shellQuote("--start=" + start))));
+    }
+
+    /**
+     * Lists the Xpra sessions, then the X displays in use, which a new server must not take.
+     */
+    static String getListCommand() {
+        return sh(xpraScript(" list 2>&1") + "; echo " + X11_MARKER + "; ls /tmp/.X11-unix 2>/dev/null");
+    }
+
+    /**
+     * Runs the script with sh, whatever the login shell of the user (ie: fish or csh).
+     */
+    private static String sh(String script) {
+        return "sh -c " + shellQuote(script);
+    }
+
+    /**
+     * Runs xpra with the arguments, from the first location found.
+     */
+    private static String xpraScript(String args) {
         final StringBuilder cmd = new StringBuilder();
         for (String xpra : REMOTE_XPRA) {
             cmd.append(cmd.length() == 0 ? "if " : "elif ");
@@ -291,8 +493,16 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
             }
             cmd.append("; then ").append(xpra).append(args).append("; ");
         }
-        cmd.append("else echo \"no xpra command found\"; exit 1; fi");
-        return "sh -c '" + cmd + "'";
+        // on stderr, as stdout carries the packets:
+        cmd.append("else echo \"" + XPRA_NOT_FOUND + "\" >&2; exit 127; fi");
+        return cmd.toString();
+    }
+
+    /**
+     * Quotes a word for sh, ie: a command typed by the user, which may contain quotes itself.
+     */
+    static String shellQuote(String word) {
+        return "'" + word.replace("'", "'\\''") + "'";
     }
 
 }

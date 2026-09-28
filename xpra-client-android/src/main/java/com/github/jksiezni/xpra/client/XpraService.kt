@@ -36,10 +36,12 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.github.jksiezni.xpra.MainActivity
 import com.github.jksiezni.xpra.R
+import com.github.jksiezni.xpra.config.ConfigDatabase
 import com.github.jksiezni.xpra.config.ConnectionType
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.ssh.SshUserInfoHandler
 import com.jcraft.jsch.JSchException
+import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -136,7 +138,7 @@ class XpraService : Service() {
         pendingStart = null
         this.serverDetails = serverDetails
         val newConnector = try {
-            prepareConnector(serverDetails, userInfoHandler)
+            prepareConnector(serverDetails, userInfoHandler, reconnect)
         } catch (e: IOException) {
             Timber.w(e, "Cannot connect to %s", serverDetails.name)
             onConnectionEnded(serverDetails, e, lost = reconnect)
@@ -156,6 +158,10 @@ class XpraService : Service() {
                     }
                     reconnecting = false
                     reconnectAttempts = 0
+                    val startedDisplay = (newConnector as? SshXpraConnector)?.startedDisplay ?: -1
+                    if (startedDisplay >= 0) {
+                        saveDisplay(serverDetails, startedDisplay)
+                    }
                     if (reconnect) {
                         userInfoHandler.onConnected()
                     }
@@ -294,7 +300,7 @@ class XpraService : Service() {
     }
 
     @Throws(IOException::class)
-    private fun prepareConnector(c: ServerDetails, userInfoHandler: SshUserInfoHandler): XpraConnector {
+    private fun prepareConnector(c: ServerDetails, userInfoHandler: SshUserInfoHandler, reconnect: Boolean): XpraConnector {
         // Xpra servers require a user name, even for connections without authentication
         client.setUsername(c.username?.takeIf { it.isNotBlank() } ?: DEFAULT_USERNAME)
         client.applySettings(c)
@@ -303,6 +309,10 @@ class XpraService : Service() {
             ConnectionType.SSH -> {
                 SshXpraConnector(client, c.host, c.username, c.port, userInfoHandler).apply {
                     setupSSHConnector(this, c)
+                    if (!reconnect) {
+                        // never when reconnecting: the user may have stopped the server
+                        setServerStarter(userInfoHandler)
+                    }
                 }
             }
         }
@@ -330,6 +340,24 @@ class XpraService : Service() {
         } catch (e: JSchException) {
             throw IOException(e)
         }
+    }
+
+    /**
+     * Keeps the display of the server started for a server without one, so that the next
+     * connections use that server rather than start another one.
+     */
+    private fun saveDisplay(serverDetails: ServerDetails, display: Int) {
+        if (serverDetails.displayId >= 0) {
+            return
+        }
+        serverDetails.displayId = display
+        val db = ConfigDatabase.getInstance()
+        db.configs.getById(serverDetails.id)
+            .subscribeOn(Schedulers.io())
+            .subscribe({ saved ->
+                saved.displayId = display
+                db.configs.save(saved)
+            }, { Timber.w(it, "Cannot save the display") })
     }
 
     private fun onConnect(serverDetails: ServerDetails) {

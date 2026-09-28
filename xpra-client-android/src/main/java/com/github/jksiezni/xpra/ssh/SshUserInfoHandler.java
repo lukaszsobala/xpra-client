@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 
 import timber.log.Timber;
+import xpra.network.ServerStarter;
 
 /**
  * Asks the user for the SSH credentials, or uses the ones saved in the {@link PasswordVault}.
@@ -45,7 +46,7 @@ import timber.log.Timber;
  *
  * @author Jakub Księżniak
  */
-public class SshUserInfoHandler implements UserInfo, UIKeyboardInteractive {
+public class SshUserInfoHandler implements UserInfo, UIKeyboardInteractive, ServerStarter {
 
 	private static final String PASSWORD = "password";
 	private static final String PASSPHRASE = "passphrase";
@@ -199,6 +200,16 @@ public class SshUserInfoHandler implements UserInfo, UIKeyboardInteractive {
 			e.printStackTrace();
 			return false;
 		}
+	}
+
+	@Override
+	public String askToStart(int display) throws InterruptedException {
+		if (activity == null) {
+			// never in the background: the user may have stopped the server
+			return null;
+		}
+		final StartServerAskTask task = new StartServerAskTask(activity, server.getHost(), display);
+		return task.execute().get() ? task.getCommand() : null;
 	}
 
 	@Override
