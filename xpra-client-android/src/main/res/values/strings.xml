@@ -58,7 +58,7 @@
     <string name="unreadable_private_key">This file cannot be read</string>
     <!-- ie: "Delete Rock5b?" -->
     <string name="delete_server_title">Delete %1$s?</string>
-    <string name="delete_server_message">Its settings, saved passwords and key are removed from this device.</string>
+    <string name="delete_server_message">Its settings, saved password and key are removed from this device.</string>
     <string name="error_unknown_host">Cannot find %1$s: check the host name and the network</string>
     <string name="error_refused">%1$s refused the connection on port %2$d: check the port and that Xpra is running</string>
     <string name="error_timeout">%1$s does not answer: check the host name and the network</string>
@@ -77,10 +77,10 @@
     <string name="untitled_window">Untitled window</string>
     <string name="remember_password">Remember password</string>
     <string name="show_password">Show password</string>
-    <string name="forget_passwords">Forget saved passwords</string>
-    <string name="forget_passwords_summary">They are encrypted with a key that never leaves this device</string>
-    <string name="no_saved_passwords">No saved passwords</string>
-    <string name="passwords_forgotten">Saved passwords forgotten</string>
+    <string name="forget_password">Forget the saved password</string>
+    <string name="forget_password_summary">The SSH password or key passphrase, encrypted with a key that never leaves this device</string>
+    <string name="no_saved_password">No saved password</string>
+    <string name="password_forgotten">Saved password forgotten</string>
     <string name="touchpad_mode">Touchpad mode</string>
     <string name="direct_touch_mode">Direct touch mode</string>
     <string name="touchpad_mode_on">Touchpad: drag to move the pointer, tap to click</string>

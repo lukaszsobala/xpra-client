@@ -39,7 +39,7 @@
 
     <PreferenceCategory android:title="Connection">
         <EditTextPreference
-            android:inputType="text"
+            android:inputType="textUri"
             android:key="host"
             android:title="Host name" />
         <EditTextPreference
@@ -63,9 +63,9 @@
                 android:summary="@string/ssh_private_key_summary"
                 android:title="@string/ssh_private_key" />
             <Preference
-                android:key="forget_passwords"
-                android:summary="@string/forget_passwords_summary"
-                android:title="@string/forget_passwords" />
+                android:key="forget_password"
+                android:summary="@string/forget_password_summary"
+                android:title="@string/forget_password" />
         </PreferenceCategory>
     </PreferenceCategory>
 
