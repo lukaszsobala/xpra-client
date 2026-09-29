@@ -18,15 +18,20 @@
 
 package com.github.jksiezni.xpra.config
 
+import android.net.InetAddresses
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
-import android.util.Patterns
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.os.BundleCompat
+import androidx.core.view.MenuProvider
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
@@ -54,12 +59,8 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
         uri?.let { importPrivateKey(it) }
     }
 
-    init {
-        setHasOptionsMenu(true)
-    }
-
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        val serverDetails = requireArguments().getSerializable(KEY_SERVER_DETAILS) as ServerDetails
+        val serverDetails = BundleCompat.getSerializable(requireArguments(), KEY_SERVER_DETAILS, ServerDetails::class.java)!!
         val dao = ConfigDatabase.getInstance().configs
         dataStore = ServerDetailsDataStore(serverDetails, dao)
         preferenceManager.preferenceDataStore = dataStore
@@ -67,19 +68,25 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
         setupPreferences()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.server_details_menu, menu)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.action_save -> if (save()) {
-                parentFragmentManager.popBackStack()
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.server_details_menu, menu)
             }
-            R.id.action_delete -> confirmDelete()
-            android.R.id.home -> parentFragmentManager.popBackStack()
-        }
-        return super.onOptionsItemSelected(item)
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                when (menuItem.itemId) {
+                    R.id.action_save -> if (save()) {
+                        parentFragmentManager.popBackStack()
+                    }
+                    R.id.action_delete -> confirmDelete()
+                    android.R.id.home -> parentFragmentManager.popBackStack()
+                    else -> return false
+                }
+                return true
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
     private fun setupPreferences() {
@@ -266,15 +273,20 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
         if (host == null || host.isEmpty()) {
             Toast.makeText(activity, R.string.host_required, Toast.LENGTH_LONG).show()
             return false
-        } else if (!HOSTNAME_PATTERN.matcher(host).matches()) {
-            val matcher = Patterns.IP_ADDRESS.matcher(host)
-            if (!matcher.matches()) {
-                Toast.makeText(activity, getString(R.string.invalid_host, host), Toast.LENGTH_LONG).show()
-                return false
-            }
+        } else if (!HOSTNAME_PATTERN.matcher(host).matches() && !isIpv6Address(host)) {
+            // the names and the IPv4 addresses match HOSTNAME_PATTERN
+            Toast.makeText(activity, getString(R.string.invalid_host, host), Toast.LENGTH_LONG).show()
+            return false
         }
         return true
     }
+
+    private fun isIpv6Address(host: String): Boolean =
+        host.contains(':') && if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            InetAddresses.isNumericAddress(host)
+        } else {
+            IPV6_PATTERN.matcher(host).matches()
+        }
 
     private fun validate(serverDetails: ServerDetails): Boolean {
         return validateName(serverDetails.name) && validateHostname(serverDetails.host) &&
@@ -294,6 +306,8 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
         private const val PREF_FORGET_PASSWORDS = "forget_password"
 
         private val HOSTNAME_PATTERN = Pattern.compile("^[0-9a-zA-Z_\\-.]*$")
+        /** loosely, before Android 10: the connection says if the address is wrong */
+        private val IPV6_PATTERN = Pattern.compile("^[0-9a-fA-F:.]+$")
 
         fun create(serverDetails: ServerDetails): ServerDetailsFragment {
             return ServerDetailsFragment().apply {

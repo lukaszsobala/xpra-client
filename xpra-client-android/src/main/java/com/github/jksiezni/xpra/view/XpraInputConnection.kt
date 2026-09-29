@@ -104,13 +104,16 @@ internal class XpraInputConnection(
          *
          * @return false if the key is not handled, ie: the back or volume keys
          */
+        @Suppress("DEPRECATION") // ACTION_MULTIPLE and characters
         fun handleKeyEvent(keyboard: KeyboardInput, event: KeyEvent): Boolean {
             val pressed = when (event.action) {
                 KeyEvent.ACTION_DOWN -> true
                 KeyEvent.ACTION_UP -> false
+                // deprecated, but still sent by some keyboards for text
                 KeyEvent.ACTION_MULTIPLE -> {
-                    event.characters?.let { keyboard.typeText(it) }
-                    return event.characters != null
+                    val text = event.characters ?: return false
+                    keyboard.typeText(text)
+                    return true
                 }
                 else -> return false
             }

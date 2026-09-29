@@ -383,7 +383,8 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
                 view.isFocusable = true
                 view.isFocusableInTouchMode = true
                 if (view.requestFocus()) {
-                    imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
+                    // asked for by the user, with the keyboard button
+                    imm.showSoftInput(view, 0)
                 }
             } else {
                 imm.hideSoftInputFromWindow(view.windowToken, 0)

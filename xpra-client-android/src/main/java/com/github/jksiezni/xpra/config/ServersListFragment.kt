@@ -24,7 +24,9 @@ import android.os.Bundle
 import android.view.*
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import com.github.jksiezni.xpra.ConnectXpraActivity
 import com.github.jksiezni.xpra.R
@@ -78,6 +80,19 @@ class ServersListFragment : Fragment() {
         floatingButton.setOnClickListener { newConnection() }
         binding.howToUseButton.setOnClickListener { HowToUse.show(requireContext()) }
         binding.serversList.adapter = adapter
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.servers_menu, menu)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean = when (menuItem.itemId) {
+                R.id.action_background_running -> {
+                    BackgroundRunning.request(requireActivity())
+                    true
+                }
+                else -> false
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
         adapter.onSecondaryAction = { item ->
             if (adapter.isConnected(item)) {
                 service.whenXpraAvailable { it.disconnect() }
@@ -122,20 +137,6 @@ class ServersListFragment : Fragment() {
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.servers_menu, menu)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_background_running -> {
-                BackgroundRunning.request(requireActivity())
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
     private fun openActiveConnection() {
         parentFragmentManager.beginTransaction()
                 .replace(id, ActiveConnectionFragment())
@@ -170,9 +171,5 @@ class ServersListFragment : Fragment() {
                 .replace(id, ServerDetailsFragment.create(connection))
                 .addToBackStack(null)
                 .commit()
-    }
-
-    init {
-        setHasOptionsMenu(true)
     }
 }

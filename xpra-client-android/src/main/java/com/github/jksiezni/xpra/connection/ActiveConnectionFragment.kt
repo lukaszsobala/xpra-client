@@ -20,10 +20,14 @@ package com.github.jksiezni.xpra.connection
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.ConcatAdapter
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.apps.AppShortcuts
@@ -60,10 +64,6 @@ class ActiveConnectionFragment : Fragment() {
         override fun onConnectionError(serverDetails: ServerDetails, e: IOException) {
             exit()
         }
-    }
-
-    init {
-        setHasOptionsMenu(true)
     }
 
     override fun onStart() {
@@ -147,6 +147,23 @@ class ActiveConnectionFragment : Fragment() {
         binding.createCommandBtn.setOnClickListener {
             StartCommandDialogFragment().showNow(childFragmentManager, StartCommandDialogFragment.TAG)
         }
+
+        service.whenXpraAvailable { api ->
+            activity?.title = api.connectionDetails?.name
+        }
+        // the up arrow of the toolbar
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean = when (menuItem.itemId) {
+                android.R.id.home -> {
+                    exit()
+                    true
+                }
+                else -> false
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
     private var tasksAdapter: TasksAdapter? = null
@@ -165,23 +182,6 @@ class ActiveConnectionFragment : Fragment() {
         appsAdapter = null
         appsHint = null
         _binding = null
-    }
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-        service.whenXpraAvailable { api ->
-            activity?.title = api.connectionDetails?.name
-        }
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            android.R.id.home -> {
-                exit()
-                true
-            }
-            else -> false
-        }
     }
 
     private fun exit() {

@@ -48,6 +48,8 @@
     <string name="no_tasks_label">No windows or apps yet</string>
     <string name="start_command">Start command</string>
     <string name="cancel">Cancel</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
     <string name="hint_start_cmd">e.g. xterm</string>
 
     <string name="ssh_private_key">SSH private key</string>
