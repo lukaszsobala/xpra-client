@@ -101,7 +101,17 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
                 }
             }
 
-        // android:inputType is not applied by the AndroidX preferences: numbers only
+        // android:inputType is not applied by the AndroidX preferences.
+        // No capital letters or corrections in the host and user names: the name can have them
+        findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_HOST)?.setOnBindEditTextListener {
+            it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI or
+                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        }
+        findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_USERNAME)?.setOnBindEditTextListener {
+            it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
+                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        }
+        // numbers only
         findPreference<EditTextPreference>(ServerDetailsDataStore.PREF_PORT)?.setOnBindEditTextListener {
             it.inputType = InputType.TYPE_CLASS_NUMBER
         }
@@ -148,13 +158,13 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
             val vault = PasswordVault(requireContext())
             pref.isEnabled = vault.hasPasswords(serverId)
             if (!pref.isEnabled) {
-                pref.summary = getString(R.string.no_saved_passwords)
+                pref.summary = getString(R.string.no_saved_password)
             }
             pref.setOnPreferenceClickListener {
                 vault.forget(serverId)
                 pref.isEnabled = false
-                pref.summary = getString(R.string.no_saved_passwords)
-                Toast.makeText(activity, R.string.passwords_forgotten, Toast.LENGTH_SHORT).show()
+                pref.summary = getString(R.string.no_saved_password)
+                Toast.makeText(activity, R.string.password_forgotten, Toast.LENGTH_SHORT).show()
                 true
             }
         }
@@ -283,7 +293,7 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
 
     companion object {
         private const val KEY_SERVER_DETAILS = "server_details"
-        private const val PREF_FORGET_PASSWORDS = "forget_passwords"
+        private const val PREF_FORGET_PASSWORDS = "forget_password"
 
         private val HOSTNAME_PATTERN = Pattern.compile("^[0-9a-zA-Z_\\-.]*$")
 

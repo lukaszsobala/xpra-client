@@ -16,6 +16,14 @@
  *     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
 include ':3rdparty:grafika'
 include 'xpra-common'
 include 'xpra-client-swing'
