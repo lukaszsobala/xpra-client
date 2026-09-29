@@ -17,15 +17,22 @@
  */
 
 buildscript {
+    ext.agp_version = '9.4.1'
     ext.kotlin_version = '2.4.20'
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:9.4.0'
+        classpath "com.android.tools.build:gradle:$agp_version"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
+}
+
+plugins {
+    // kapt with the Kotlin built into the Android Gradle plugin, published apart from it:
+    // same version as the Android Gradle plugin (agp_version)
+    id 'com.android.legacy-kapt' version '9.4.1' apply false
 }
 
 allprojects {
