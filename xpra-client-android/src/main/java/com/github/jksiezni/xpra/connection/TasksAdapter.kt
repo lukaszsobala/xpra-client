@@ -27,18 +27,15 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.github.jksiezni.xpra.R
-import io.reactivex.Observable
-import io.reactivex.subjects.PublishSubject
 import java.util.*
 
 /**
  *
  */
-class TasksAdapter(private val onListChanged: (List<TaskItem>) -> Unit) : ListAdapter<TaskItem, TasksAdapter.ViewHolder>(DIFF_CALLBACK) {
-
-    private val clickPublisher = PublishSubject.create<TaskItem>()
-
-    val onClickAction: Observable<TaskItem> = clickPublisher
+class TasksAdapter(
+    private val onClick: (TaskItem) -> Unit,
+    private val onListChanged: (List<TaskItem>) -> Unit
+) : ListAdapter<TaskItem, TasksAdapter.ViewHolder>(DIFF_CALLBACK) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
@@ -49,7 +46,7 @@ class TasksAdapter(private val onListChanged: (List<TaskItem>) -> Unit) : ListAd
         val item = getItem(position)
         holder.titleView.text = item.title
         holder.iconView.setImageDrawable(item.icon)
-        holder.itemView.setOnClickListener { clickPublisher.onNext(item) }
+        holder.itemView.setOnClickListener { onClick(item) }
     }
 
     override fun onCurrentListChanged(previousList: MutableList<TaskItem>, currentList: MutableList<TaskItem>) {

@@ -25,8 +25,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import xpra.protocol.XpraSender;
 import xpra.protocol.packets.ClipboardPacket;
@@ -40,7 +40,7 @@ import xpra.protocol.packets.ClipboardPacket;
  */
 public class ClipboardSync {
 
-    private static final Logger logger = LoggerFactory.getLogger(ClipboardSync.class);
+    private static final Logger logger = Logger.getLogger(ClipboardSync.class.getName());
 
     /**
      * The local clipboard, ie: Android's.
@@ -109,7 +109,9 @@ public class ClipboardSync {
     }
 
     void process(ClipboardPacket packet) {
-        logger.debug("process(" + packet + ")");
+        if (logger.isLoggable(Level.FINE)) {
+            logger.fine("process(" + packet + ")");
+        }
         switch (packet.type) {
             case "clipboard-token":
                 processToken(packet);

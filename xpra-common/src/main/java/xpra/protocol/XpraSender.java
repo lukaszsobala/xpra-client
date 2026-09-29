@@ -25,8 +25,8 @@ import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import xpra.network.HeaderChunk;
 
@@ -35,7 +35,7 @@ import xpra.network.HeaderChunk;
  * Packets sent by a client are small, so they are never compressed.
  */
 public final class XpraSender implements Closeable {
-    private static final Logger logger = LoggerFactory.getLogger(XpraSender.class);
+    private static final Logger logger = Logger.getLogger(XpraSender.class.getName());
 
     private final OutputStream outputStream;
     private final SendWorker sendWorker;
@@ -49,7 +49,7 @@ public final class XpraSender implements Closeable {
 
     public synchronized void send(IOPacket packet) {
         if (!sendWorker.isAlive()) {
-            logger.warn("Stream closed! Failed to send packet: " + packet.type);
+            logger.warning("Stream closed! Failed to send packet: " + packet.type);
             return;
         }
         final ArrayList<Object> list = new ArrayList<>();
@@ -86,7 +86,7 @@ public final class XpraSender implements Closeable {
                     send(list);
                 }
             } catch (InterruptedException e) {
-                logger.debug("Finished sender thread.");
+                logger.fine("Finished sender thread.");
             }
         }
 
@@ -96,13 +96,15 @@ public final class XpraSender implements Closeable {
                 RencodePlus.encode(byteStream, list);
                 final int packetSize = byteStream.size();
                 headerChunk.setPacketSize(packetSize);
-                logger.trace("send(" + list + ")");
+                if (logger.isLoggable(Level.FINEST)) {
+                    logger.finest("send(" + list + ")");
+                }
                 headerChunk.writeHeader(outputStream);
                 outputStream.write(byteStream.getBytes(), 0, packetSize);
                 outputStream.flush();
             } catch (IOException | RuntimeException e) {
                 // a packet which cannot be encoded must not end the thread, nor crash the app
-                logger.error("Failed to send packet: " + list.get(0), e);
+                logger.log(Level.SEVERE, "Failed to send packet: " + list.get(0), e);
             }
         }
     }

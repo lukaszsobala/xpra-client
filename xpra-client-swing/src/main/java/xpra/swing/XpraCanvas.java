@@ -18,8 +18,8 @@
 
 package xpra.swing;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import java.awt.Canvas;
 import java.awt.Color;
@@ -59,7 +59,7 @@ import xpra.swing.keyboard.KeyMap;
 public class XpraCanvas extends Canvas implements HierarchyListener, MouseListener, MouseMotionListener, KeyListener {
     private static final long serialVersionUID = 1L;
 
-    private static final Logger logger = LoggerFactory.getLogger(XpraCanvas.class);
+    private static final Logger logger = Logger.getLogger(XpraCanvas.class.getName());
 
     private final XpraWindow xwnd;
 
@@ -87,7 +87,9 @@ public class XpraCanvas extends Canvas implements HierarchyListener, MouseListen
     }
 
     public void draw(DrawPacket packet) {
-        logger.debug("draw: " + packet);
+        if (logger.isLoggable(Level.FINE)) {
+            logger.fine("draw: " + packet);
+        }
         try {
             BufferedImage img = createBitmap(packet);
             Graphics2D g = (Graphics2D) getBufferStrategy().getDrawGraphics();

@@ -27,17 +27,14 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.github.jksiezni.xpra.R
-import io.reactivex.Observable
-import io.reactivex.subjects.PublishSubject
 import java.util.*
 
 class ServerDetailsAdapter : ListAdapter<ServerDetails, ServerDetailsAdapter.ViewHolder>(DIFF_CALLBACK) {
 
-    private val primaryActionPublisher = PublishSubject.create<ServerDetails>()
-    private val secondaryActionPublisher = PublishSubject.create<ServerDetails>()
-
-    val primaryAction: Observable<ServerDetails> = primaryActionPublisher
-    val secondaryAction: Observable<ServerDetails> = secondaryActionPublisher
+    /** "Connect", or "Open" when connected */
+    var onPrimaryAction: ((ServerDetails) -> Unit)? = null
+    /** "Edit", or "Disconnect" when connected */
+    var onSecondaryAction: ((ServerDetails) -> Unit)? = null
 
     private val connectionFlags: MutableSet<Int> = HashSet()
 
@@ -65,10 +62,10 @@ class ServerDetailsAdapter : ListAdapter<ServerDetails, ServerDetailsAdapter.Vie
         holder.nameView.text = item.name
         holder.typeView.text = item.url
         holder.secondaryBtn.setOnClickListener {
-            secondaryActionPublisher.onNext(item)
+            onSecondaryAction?.invoke(item)
         }
         holder.primaryBtn.setOnClickListener {
-            primaryActionPublisher.onNext(item)
+            onPrimaryAction?.invoke(item)
         }
         val context = holder.itemView.context
         if (connected) {

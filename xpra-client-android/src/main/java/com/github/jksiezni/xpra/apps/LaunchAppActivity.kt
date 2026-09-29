@@ -39,10 +39,9 @@ import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActivityConnectBinding
 import com.github.jksiezni.xpra.view.Intents
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
-import io.reactivex.schedulers.Schedulers
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import xpra.client.ServerApp
 import java.io.IOException
@@ -54,7 +53,6 @@ import java.io.IOException
 class LaunchAppActivity : AppCompatActivity(), ConnectionEventListener, XpraEventListener {
 
     private val serviceBinderFragment by lazy { ServiceBinderFragment.obtain(this) }
-    private val disposables = CompositeDisposable()
     private val handler = Handler(Looper.getMainLooper())
 
     private lateinit var binding: ActivityConnectBinding
@@ -121,7 +119,6 @@ class LaunchAppActivity : AppCompatActivity(), ConnectionEventListener, XpraEven
 
     override fun onDestroy() {
         super.onDestroy()
-        disposables.dispose()
         handler.removeCallbacks(windowTimeout)
         api?.let {
             it.unregisterConnectionListener(this)
@@ -148,26 +145,32 @@ class LaunchAppActivity : AppCompatActivity(), ConnectionEventListener, XpraEven
      * A single connection is supported: offer to leave the other server.
      */
     private fun askToSwitch(xpra: XpraAPI, connected: ServerDetails) {
-        ConfigDatabase.getInstance().configs.getById(serverId)
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ server ->
-                MaterialAlertDialogBuilder(this)
-                    .setTitle(R.string.switch_server_title)
-                    .setMessage(getString(R.string.switch_server_message, connected.name, server.name))
-                    .setPositiveButton(R.string.switch_server) { _, _ ->
-                        connectWhenDisconnected = true
-                        xpra.disconnect()
-                    }
-                    .setNegativeButton(R.string.cancel) { _, _ -> finish() }
-                    .setOnCancelListener { finish() }
-                    .show()
-            }, { throwable ->
-                Timber.e(throwable)
-                Toast.makeText(this, R.string.server_removed, Toast.LENGTH_LONG).show()
+        // cancelled with the screen
+        lifecycleScope.launch {
+            val server = try {
+                ConfigDatabase.getInstance().configs.getById(serverId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: RuntimeException) {
+                Timber.e(e, "cannot read the server %d", serverId)
+                null
+            }
+            if (server == null) {
+                Toast.makeText(this@LaunchAppActivity, R.string.server_removed, Toast.LENGTH_LONG).show()
                 finish()
-            })
-            .addTo(disposables)
+                return@launch
+            }
+            MaterialAlertDialogBuilder(this@LaunchAppActivity)
+                .setTitle(R.string.switch_server_title)
+                .setMessage(getString(R.string.switch_server_message, connected.name, server.name))
+                .setPositiveButton(R.string.switch_server) { _, _ ->
+                    connectWhenDisconnected = true
+                    xpra.disconnect()
+                }
+                .setNegativeButton(R.string.cancel) { _, _ -> finish() }
+                .setOnCancelListener { finish() }
+                .show()
+        }
     }
 
     private fun launch(xpra: XpraAPI) {

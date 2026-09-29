@@ -19,8 +19,6 @@
 package com.github.jksiezni.xpra.config
 
 import androidx.preference.PreferenceDataStore
-import io.reactivex.Single
-import io.reactivex.schedulers.Schedulers
 import org.jetbrains.annotations.NotNull
 import xpra.protocol.PictureEncoding
 
@@ -93,6 +91,6 @@ class ServerDetailsDataStore(
     }
 
     fun save() {
-        Single.just(serverDetails).subscribeOn(Schedulers.io()).subscribe(dao.save())
+        ConfigDatabase.inBackground { dao.save(serverDetails) }
     }
 }

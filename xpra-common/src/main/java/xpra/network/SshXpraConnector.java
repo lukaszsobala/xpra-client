@@ -29,8 +29,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Logger;
 
 import xpra.client.XpraClient;
 import xpra.client.XpraConnector;
@@ -47,7 +46,7 @@ import com.jcraft.jsch.UserInfo;
  * An SSH connector to Xpra Server.
  */
 public class SshXpraConnector extends XpraConnector implements Runnable {
-    private static final Logger logger = LoggerFactory.getLogger(SshXpraConnector.class);
+    private static final Logger logger = Logger.getLogger(SshXpraConnector.class.getName());
 
     /** without it, connecting to an unreachable server waits for minutes, ie: while reconnecting */
     private static final int CONNECT_TIMEOUT_MS = 15_000;
@@ -198,7 +197,7 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
             }
             session.setServerAliveInterval(1000);
             session.setServerAliveCountMax(15);
-            logger.debug("Keep-alive interval={}, maxAliveCount={}", session.getServerAliveInterval(), session.getServerAliveCountMax());
+            logger.fine("Keep-alive interval=" + session.getServerAliveInterval() + ", maxAliveCount=" + session.getServerAliveCountMax());
             session.connect(CONNECT_TIMEOUT_MS);
             if (Thread.currentThread() != thread) {
                 // disconnected while the session was being set up
@@ -316,7 +315,7 @@ public class SshXpraConnector extends XpraConnector implements Runnable {
         if (startCommand == null) {
             throw new NoServerException(toStart);
         }
-        logger.info("Starting an Xpra server on :{}", toStart);
+        logger.info("Starting an Xpra server on :" + toStart);
         startedDisplay = toStart;
         return getStartCommand(toStart, startCommand);
     }

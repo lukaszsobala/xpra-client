@@ -36,8 +36,6 @@ import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.client.label
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActiveConnectionFragmentBinding
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
 import java.io.IOException
 
 /**
@@ -49,8 +47,6 @@ class ActiveConnectionFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val service by lazy { ServiceBinderFragment.obtain(activity) }
-
-    private val disposables = CompositeDisposable()
 
     private val connectionListener = object : ConnectionEventListener {
         override fun onConnected(serverDetails: ServerDetails) {
@@ -98,14 +94,15 @@ class ActiveConnectionFragment : Fragment() {
         // says why there are no apps:
         val appsHint = SectionHeaderAdapter(R.string.no_server_apps, R.layout.hint_item)
         this.appsHint = appsHint
-        val adapter = TasksAdapter { windows ->
-            windowsHeader.visible = windows.isNotEmpty()
-            updateEmptyView()
-        }
-        adapter.onClickAction.subscribe { item ->
-            val intent = Intents.createXpraIntent(requireContext(), item.windowId)
-            startActivity(intent)
-        }.addTo(disposables)
+        val adapter = TasksAdapter(
+            onClick = { item ->
+                val intent = Intents.createXpraIntent(requireContext(), item.windowId)
+                startActivity(intent)
+            },
+            onListChanged = { windows ->
+                windowsHeader.visible = windows.isNotEmpty()
+                updateEmptyView()
+            })
         val appsAdapter = ServerAppsAdapter(
             onLaunch = { app ->
                 service.xpraAPI?.connectionDetails?.let { server ->
@@ -164,7 +161,6 @@ class ActiveConnectionFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        disposables.clear()
         tasksAdapter = null
         appsAdapter = null
         appsHint = null

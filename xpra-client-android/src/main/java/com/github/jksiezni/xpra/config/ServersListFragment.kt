@@ -34,14 +34,11 @@ import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.connection.ActiveConnectionFragment
 import com.github.jksiezni.xpra.databinding.ServersFragmentBinding
 import com.github.jksiezni.xpra.help.HowToUse
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
 import timber.log.Timber
 import java.io.IOException
 
 class ServersListFragment : Fragment() {
 
-    private val disposables = CompositeDisposable()
     private val service by lazy { ServiceBinderFragment.obtain(activity) }
     private val adapter = ServerDetailsAdapter()
 
@@ -81,14 +78,14 @@ class ServersListFragment : Fragment() {
         floatingButton.setOnClickListener { newConnection() }
         binding.howToUseButton.setOnClickListener { HowToUse.show(requireContext()) }
         binding.serversList.adapter = adapter
-        adapter.secondaryAction.subscribe { item ->
+        adapter.onSecondaryAction = { item ->
             if (adapter.isConnected(item)) {
                 service.whenXpraAvailable { it.disconnect() }
             } else {
                 editConnection(item)
             }
-        }.addTo(disposables)
-        adapter.primaryAction.subscribe { item ->
+        }
+        adapter.onPrimaryAction = { item ->
             when {
                 adapter.isConnected(item) -> {
                     openActiveConnection()
@@ -103,7 +100,7 @@ class ServersListFragment : Fragment() {
                     connectLauncher.launch(intent)
                 }
             }
-        }.addTo(disposables)
+        }
 
         val viewModel = ViewModelProvider(this)[ServerDetailsViewModel::class.java]
         updateServersList(viewModel.getAllServers().value)
@@ -118,7 +115,8 @@ class ServersListFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        disposables.clear()
+        adapter.onPrimaryAction = null
+        adapter.onSecondaryAction = null
         service.whenXpraAvailable { s ->
             s.unregisterConnectionListener(connectionListener)
         }

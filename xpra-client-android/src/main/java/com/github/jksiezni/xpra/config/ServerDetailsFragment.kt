@@ -38,8 +38,6 @@ import com.github.jksiezni.xpra.gl.VideoDecoders
 import com.github.jksiezni.xpra.ssh.PasswordVault
 import com.github.jksiezni.xpra.ssh.SshKeys
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import io.reactivex.Completable
-import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -218,10 +216,10 @@ class ServerDetailsFragment : PreferenceFragmentCompat() {
             .setPositiveButton(R.string.delete) { _, _ ->
                 val context = requireContext().applicationContext
                 val dao = ConfigDatabase.getInstance().configs
-                Completable.fromAction {
+                ConfigDatabase.inBackground {
                     dao.delete(server)
                     PasswordVault(context).forget(server.id)
-                }.subscribeOn(Schedulers.io()).subscribe()
+                }
                 parentFragmentManager.popBackStack()
             }
             .setNegativeButton(R.string.cancel, null)

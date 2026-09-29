@@ -29,10 +29,7 @@ import com.github.jksiezni.xpra.config.ConfigDatabase
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActivityConnectBinding
 import com.github.jksiezni.xpra.ssh.SshUserInfoHandler
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
-import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.IOException
@@ -41,8 +38,6 @@ import java.io.IOException
 class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
 
     private val serviceBinderFragment by lazy { ServiceBinderFragment.obtain(this) }
-
-    private val disposables = CompositeDisposable()
 
     private lateinit var binding: ActivityConnectBinding
 
@@ -66,28 +61,32 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
             val db = ConfigDatabase.getInstance()
             val id = intent.getIntExtra(EXTRA_CONNECTION_ID, 0)
 
-            db.configs.getById(id)
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                            { connection: ServerDetails ->
-                                title = connection.name
-                                val userInfo = SshUserInfoHandler(this, connection)
-                                userInfoHandler = userInfo
-                                connecting = connection
-                                api.connect(connection, userInfo)
-                            },
-                            { throwable: Throwable? ->
-                                Timber.e(throwable)
-                                finish()
-                            })
-                    .addTo(disposables)
+            // cancelled with the screen
+            lifecycleScope.launch {
+                val connection = try {
+                    db.configs.getById(id)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: RuntimeException) {
+                    Timber.e(e, "cannot read the server %d", id)
+                    null
+                }
+                if (connection == null) {
+                    Timber.w("no server %d", id)
+                    finish()
+                    return@launch
+                }
+                title = connection.name
+                val userInfo = SshUserInfoHandler(this@ConnectXpraActivity, connection)
+                userInfoHandler = userInfo
+                connecting = connection
+                api.connect(connection, userInfo)
+            }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        disposables.dispose()
         serviceBinderFragment.whenXpraAvailable { api ->
             api.unregisterConnectionListener(this)
             if (connecting != null && isFinishing) {

@@ -18,6 +18,9 @@
 
 package xpra.swing;
 
+import java.io.InputStream;
+import java.util.logging.LogManager;
+
 import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
@@ -33,6 +36,9 @@ import com.jcraft.jsch.UserInfo;
 public class Launcher {
 
     public static void main(String[] args) throws Exception {
+        try (InputStream config = Launcher.class.getResourceAsStream("/logging.properties")) {
+            LogManager.getLogManager().readConfiguration(config);
+        }
         XpraClient client = new SwingXpraClient();
         // usage: Launcher [host [port]]
         final String host = args.length > 0 ? args[0] : "localhost";

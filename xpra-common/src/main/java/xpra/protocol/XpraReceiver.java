@@ -18,8 +18,8 @@
 
 package xpra.protocol;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -50,7 +50,7 @@ import xpra.protocol.packets.WindowMetadata;
  *
  */
 public class XpraReceiver {
-    private static final Logger logger = LoggerFactory.getLogger(XpraReceiver.class);
+    private static final Logger logger = Logger.getLogger(XpraReceiver.class.getName());
     private static final Map<String, Builder<Packet>> PACKETS_MAP = new HashMap<>();
 
     private final Map<Class<?>, PacketHandler<?>> handlers = new HashMap<>();
@@ -94,7 +94,7 @@ public class XpraReceiver {
 
     public void onReceive(List<Object> dp) throws IOException {
         if (dp.size() < 1) {
-            logger.error("onReceive(..) decoded data is too small: " + dp);
+            logger.severe("onReceive(..) decoded data is too small: " + dp);
             return;
         }
 
@@ -105,16 +105,18 @@ public class XpraReceiver {
             Packet packet = builder.build();
             try {
                 packet.deserialize(it);
-                logger.trace("onReceive(): " + packet);
+                if (logger.isLoggable(Level.FINEST)) {
+                    logger.finest("onReceive(): " + packet);
+                }
                 process(packet);
             } catch (RuntimeException e) {
                 // an unexpected packet format should not bring down the whole connection
-                logger.error("Failed to process packet: " + type, e);
+                logger.log(Level.SEVERE, "Failed to process packet: " + type, e);
             }
         } else if (IGNORED_PACKETS.contains(type)) {
-            logger.debug("Ignoring packet: " + type);
+            logger.fine("Ignoring packet: " + type);
         } else {
-            logger.warn("Not supported packet: " + type);
+            logger.warning("Not supported packet: " + type);
         }
     }
 
@@ -124,7 +126,7 @@ public class XpraReceiver {
         if (handler != null) {
             handler.process(packet);
         } else {
-            logger.debug("No handler for: " + packet);
+            logger.fine("No handler for: " + packet);
         }
     }
 
