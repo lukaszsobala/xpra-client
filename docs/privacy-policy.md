@@ -1,6 +1,6 @@
 # Privacy policy of Xpra Client for Android
 
-Last updated: 26 September 2026
+Last updated: 29 September 2026
 
 Xpra Client for Android ("the app") is an unofficial, open source client for [Xpra](https://xpra.org)
 servers, published under the GNU GPL v3 at <https://github.com/lukaszsobala/xpra-client>.
@@ -53,6 +53,8 @@ SSH private keys are always left out of backups and device transfers.
 
 - **Internet and network state**: to connect to your servers, and to reconnect as soon as the
   network comes back.
+- **Nearby devices (local network)**: on Android 17 and later, to connect to servers on your local
+  network. It is asked for before connecting to such a server.
 - **Foreground service and notifications**: to keep the connection open while you use other apps,
   with a notification showing it is connected.
 

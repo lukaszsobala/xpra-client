@@ -50,7 +50,12 @@ object ConnectionErrors {
                 context.getString(R.string.error_refused, server.host, server.port)
             causes.any { it is SocketTimeoutException || it is NoRouteToHostException } ||
                 jsch.contains("timeout", ignoreCase = true) ->
-                context.getString(R.string.error_timeout, server.host)
+                if (LocalNetwork.isAllowed(context)) {
+                    context.getString(R.string.error_timeout, server.host)
+                } else {
+                    // or the server is on the local network, which Android 17 blocks without it
+                    context.getString(R.string.error_timeout_local_network, server.host)
+                }
             jsch.startsWith("Auth", ignoreCase = true) ->
                 context.getString(R.string.error_ssh_auth)
             jsch.contains("HostKey", ignoreCase = true) ->

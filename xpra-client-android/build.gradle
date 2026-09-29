@@ -45,7 +45,7 @@ android {
     defaultConfig {
         applicationId = "io.github.lukaszsobala.xpra"
         minSdk = 23
-        targetSdk = 36
+        targetSdk = 37
         versionCode = versionMajor * 1000000 + versionMinor * 10000 + buildNumber
         versionName = version
 

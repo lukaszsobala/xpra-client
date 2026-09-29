@@ -19,18 +19,23 @@ package com.github.jksiezni.xpra
 
 import android.os.Bundle
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withStarted
 import com.github.jksiezni.xpra.client.ConnectionErrors
 import com.github.jksiezni.xpra.client.ConnectionEventListener
+import com.github.jksiezni.xpra.client.LocalNetwork
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.config.ConfigDatabase
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActivityConnectBinding
 import com.github.jksiezni.xpra.ssh.SshUserInfoHandler
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.IOException
 
@@ -45,6 +50,11 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
 
     /** the server this screen connects to, until connected */
     private var connecting: ServerDetails? = null
+
+    private var localNetworkAnswer: CompletableDeferred<Boolean>? = null
+    private val localNetworkRequest = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        localNetworkAnswer?.complete(granted)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,12 +87,28 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
                     return@launch
                 }
                 title = connection.name
+                askForLocalNetwork(connection)
                 val userInfo = SshUserInfoHandler(this@ConnectXpraActivity, connection)
                 userInfoHandler = userInfo
                 connecting = connection
                 api.connect(connection, userInfo)
             }
         }
+    }
+
+    /**
+     * Asks for the local network permission of Android 17 when the server is on the local
+     * network. The connection is tried anyway: if it was refused, the error explains it.
+     */
+    private suspend fun askForLocalNetwork(server: ServerDetails) {
+        val host = server.host ?: return
+        if (LocalNetwork.isAllowed(this) || !withContext(Dispatchers.IO) { LocalNetwork.isLocal(host) }) {
+            return
+        }
+        val answer = CompletableDeferred<Boolean>()
+        localNetworkAnswer = answer
+        localNetworkRequest.launch(LocalNetwork.PERMISSION)
+        Timber.i("local network access allowed: %s", answer.await())
     }
 
     override fun onDestroy() {
