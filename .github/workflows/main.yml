@@ -25,7 +25,8 @@ jobs:
           cache-provider: basic
       # the release bundle is unsigned here: it checks that a release builds (ie: its lint checks)
       - name: Build and run unit tests
-        run: ./gradlew assembleDebug bundleRelease test
+        # lists the deprecations, rather than only saying there are some
+        run: ./gradlew --warning-mode all assembleDebug bundleRelease test
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
