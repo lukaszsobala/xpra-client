@@ -30,9 +30,8 @@ buildscript {
 }
 
 plugins {
-    // kapt with the Kotlin built into the Android Gradle plugin, published apart from it:
-    // same version as the Android Gradle plugin (agp_version)
-    id 'com.android.legacy-kapt' version '9.4.1' apply false
+    // runs the Room annotation processor
+    id 'com.google.devtools.ksp' version '2.3.12' apply false
 }
 
 allprojects {

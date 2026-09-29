@@ -22,16 +22,19 @@ import androidx.room.TypeConverter
 import xpra.protocol.PictureEncoding
 
 /**
- *
+ * Stores the enums by their position.
  */
-@TypeConverter
-fun toConnectionType(value: Int): ConnectionType? = enumValues<ConnectionType>()[value]
+class Converters {
 
-@TypeConverter
-fun fromHealth(value: ConnectionType) = value.ordinal
+    @TypeConverter
+    fun toConnectionType(value: Int): ConnectionType = enumValues<ConnectionType>()[value]
 
-@TypeConverter
-fun toPictureEncoding(value: Int): PictureEncoding? = enumValues<PictureEncoding>()[value]
+    @TypeConverter
+    fun fromConnectionType(value: ConnectionType): Int = value.ordinal
 
-@TypeConverter
-fun fromPictureEncoding(value: PictureEncoding) = value.ordinal
+    @TypeConverter
+    fun toPictureEncoding(value: Int): PictureEncoding = enumValues<PictureEncoding>()[value]
+
+    @TypeConverter
+    fun fromPictureEncoding(value: PictureEncoding): Int = value.ordinal
+}

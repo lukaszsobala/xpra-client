@@ -16,55 +16,49 @@
  *     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package com.github.jksiezni.xpra.config;
+package com.github.jksiezni.xpra.config
 
-import java.util.List;
-
-import androidx.lifecycle.LiveData;
-import androidx.room.Dao;
-import androidx.room.Delete;
-import androidx.room.Insert;
-import androidx.room.OnConflictStrategy;
-import androidx.room.Query;
-import io.reactivex.Single;
-import io.reactivex.SingleObserver;
-import io.reactivex.observers.DisposableSingleObserver;
-import io.reactivex.plugins.RxJavaPlugins;
+import androidx.lifecycle.LiveData
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import io.reactivex.Single
+import io.reactivex.SingleObserver
+import io.reactivex.observers.DisposableSingleObserver
+import io.reactivex.plugins.RxJavaPlugins
 
 @Dao
-public interface ConnectionDao {
+interface ConnectionDao {
 
     @Query("SELECT * FROM ServerDetails")
-    LiveData<List<ServerDetails>> getAll();
+    fun getAll(): LiveData<List<ServerDetails>>
 
     @Query("SELECT * FROM ServerDetails WHERE id = :id")
-    Single<ServerDetails> getById(int id);
+    fun getById(id: Int): Single<ServerDetails>
 
-    /** the SSH private keys used by the servers, see {@link com.github.jksiezni.xpra.ssh.SshKeys} */
+    /** the SSH private keys used by the servers, see [com.github.jksiezni.xpra.ssh.SshKeys] */
     @Query("SELECT sshPrivateKeyFile FROM ServerDetails WHERE sshPrivateKeyFile IS NOT NULL")
-    List<String> getPrivateKeyFiles();
+    fun getPrivateKeyFiles(): List<String>
 
     /** for a key which is gone, ie: the settings were restored from a backup, which leaves the keys out */
     @Query("UPDATE ServerDetails SET sshPrivateKeyFile = NULL WHERE sshPrivateKeyFile = :path")
-    void forgetPrivateKeyFile(String path);
+    fun forgetPrivateKeyFile(path: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void save(ServerDetails config);
+    fun save(config: ServerDetails)
 
     @Delete
-    void delete(ServerDetails config);
+    fun delete(config: ServerDetails)
 
-    default SingleObserver<ServerDetails> save() {
-        return new DisposableSingleObserver<ServerDetails>() {
-            @Override
-            public void onSuccess(ServerDetails deviceConfig) {
-                save(deviceConfig);
-            }
+    fun save(): SingleObserver<ServerDetails> = object : DisposableSingleObserver<ServerDetails>() {
+        override fun onSuccess(deviceConfig: ServerDetails) {
+            save(deviceConfig)
+        }
 
-            @Override
-            public void onError(Throwable e) {
-                RxJavaPlugins.onError(e);
-            }
-        };
+        override fun onError(e: Throwable) {
+            RxJavaPlugins.onError(e)
+        }
     }
 }

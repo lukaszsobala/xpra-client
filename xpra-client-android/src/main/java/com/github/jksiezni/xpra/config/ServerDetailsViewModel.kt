@@ -29,6 +29,6 @@ class ServerDetailsViewModel(application: Application) : AndroidViewModel(applic
 
     private val connectionDao = ConfigDatabase.getInstance().configs
 
-    fun getAllServers() : LiveData<MutableList<ServerDetails>> = connectionDao.all
+    fun getAllServers(): LiveData<List<ServerDetails>> = connectionDao.getAll()
 
 }

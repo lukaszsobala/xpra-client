@@ -93,7 +93,7 @@ object SshKeys {
      */
     fun cleanUp(context: Context, dao: ConnectionDao) {
         val used = mutableSetOf<File>()
-        for (path in dao.privateKeyFiles) {
+        for (path in dao.getPrivateKeyFiles()) {
             val file = File(path)
             if (file.isFile) {
                 used.add(file.parentFile!!)
