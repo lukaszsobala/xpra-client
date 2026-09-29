@@ -20,10 +20,14 @@ package com.github.jksiezni.xpra.connection
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.ConcatAdapter
 import com.github.jksiezni.xpra.R
 import com.github.jksiezni.xpra.apps.AppShortcuts
@@ -36,8 +40,6 @@ import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.client.label
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActiveConnectionFragmentBinding
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
 import java.io.IOException
 
 /**
@@ -49,8 +51,6 @@ class ActiveConnectionFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val service by lazy { ServiceBinderFragment.obtain(activity) }
-
-    private val disposables = CompositeDisposable()
 
     private val connectionListener = object : ConnectionEventListener {
         override fun onConnected(serverDetails: ServerDetails) {
@@ -64,10 +64,6 @@ class ActiveConnectionFragment : Fragment() {
         override fun onConnectionError(serverDetails: ServerDetails, e: IOException) {
             exit()
         }
-    }
-
-    init {
-        setHasOptionsMenu(true)
     }
 
     override fun onStart() {
@@ -98,14 +94,15 @@ class ActiveConnectionFragment : Fragment() {
         // says why there are no apps:
         val appsHint = SectionHeaderAdapter(R.string.no_server_apps, R.layout.hint_item)
         this.appsHint = appsHint
-        val adapter = TasksAdapter { windows ->
-            windowsHeader.visible = windows.isNotEmpty()
-            updateEmptyView()
-        }
-        adapter.onClickAction.subscribe { item ->
-            val intent = Intents.createXpraIntent(requireContext(), item.windowId)
-            startActivity(intent)
-        }.addTo(disposables)
+        val adapter = TasksAdapter(
+            onClick = { item ->
+                val intent = Intents.createXpraIntent(requireContext(), item.windowId)
+                startActivity(intent)
+            },
+            onListChanged = { windows ->
+                windowsHeader.visible = windows.isNotEmpty()
+                updateEmptyView()
+            })
         val appsAdapter = ServerAppsAdapter(
             onLaunch = { app ->
                 service.xpraAPI?.connectionDetails?.let { server ->
@@ -150,6 +147,23 @@ class ActiveConnectionFragment : Fragment() {
         binding.createCommandBtn.setOnClickListener {
             StartCommandDialogFragment().showNow(childFragmentManager, StartCommandDialogFragment.TAG)
         }
+
+        service.whenXpraAvailable { api ->
+            activity?.title = api.connectionDetails?.name
+        }
+        // the up arrow of the toolbar
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean = when (menuItem.itemId) {
+                android.R.id.home -> {
+                    exit()
+                    true
+                }
+                else -> false
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
     private var tasksAdapter: TasksAdapter? = null
@@ -164,28 +178,10 @@ class ActiveConnectionFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        disposables.clear()
         tasksAdapter = null
         appsAdapter = null
         appsHint = null
         _binding = null
-    }
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-        service.whenXpraAvailable { api ->
-            activity?.title = api.connectionDetails?.name
-        }
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            android.R.id.home -> {
-                exit()
-                true
-            }
-            else -> false
-        }
     }
 
     private fun exit() {

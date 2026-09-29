@@ -24,10 +24,6 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import io.reactivex.Single
-import io.reactivex.SingleObserver
-import io.reactivex.observers.DisposableSingleObserver
-import io.reactivex.plugins.RxJavaPlugins
 
 @Dao
 interface ConnectionDao {
@@ -35,8 +31,9 @@ interface ConnectionDao {
     @Query("SELECT * FROM ServerDetails")
     fun getAll(): LiveData<List<ServerDetails>>
 
+    /** null when the server was removed */
     @Query("SELECT * FROM ServerDetails WHERE id = :id")
-    fun getById(id: Int): Single<ServerDetails>
+    suspend fun getById(id: Int): ServerDetails?
 
     /** the SSH private keys used by the servers, see [com.github.jksiezni.xpra.ssh.SshKeys] */
     @Query("SELECT sshPrivateKeyFile FROM ServerDetails WHERE sshPrivateKeyFile IS NOT NULL")
@@ -51,14 +48,4 @@ interface ConnectionDao {
 
     @Delete
     fun delete(config: ServerDetails)
-
-    fun save(): SingleObserver<ServerDetails> = object : DisposableSingleObserver<ServerDetails>() {
-        override fun onSuccess(deviceConfig: ServerDetails) {
-            save(deviceConfig)
-        }
-
-        override fun onError(e: Throwable) {
-            RxJavaPlugins.onError(e)
-        }
-    }
 }

@@ -42,7 +42,6 @@ import com.github.jksiezni.xpra.view.Intents.getWindowId
 import com.github.jksiezni.xpra.view.Intents.isValidXpraActivityIntent
 import com.github.jksiezni.xpra.config.ConfigDatabase
 import com.github.jksiezni.xpra.config.ServerDetails
-import io.reactivex.schedulers.Schedulers
 import kotlin.math.roundToInt
 import com.github.jksiezni.xpra.databinding.ActivityXpraBinding
 import com.github.jksiezni.xpra.help.HowToUse
@@ -339,12 +338,12 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
     private fun saveScale(server: ServerDetails, percent: Int) {
         server.scalePercent = percent
         val db = ConfigDatabase.getInstance()
-        db.configs.getById(server.id)
-            .subscribeOn(Schedulers.io())
-            .subscribe({ saved ->
+        ConfigDatabase.inBackground {
+            db.configs.getById(server.id)?.let { saved ->
                 saved.scalePercent = percent
                 db.configs.save(saved)
-            }, { Timber.w(it, "Cannot save the scale") })
+            }
+        }
     }
 
     /**
@@ -384,7 +383,8 @@ class XpraActivity : AppCompatActivity(), XpraEventListener, XpraWindowListener,
                 view.isFocusable = true
                 view.isFocusableInTouchMode = true
                 if (view.requestFocus()) {
-                    imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
+                    // asked for by the user, with the keyboard button
+                    imm.showSoftInput(view, 0)
                 }
             } else {
                 imm.hideSoftInputFromWindow(view.windowToken, 0)

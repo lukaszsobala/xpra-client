@@ -21,7 +21,7 @@ The app is not published in any app stores.
 
 Every push is built by [GitHub Actions](https://github.com/lukaszsobala/xpra-client/actions/workflows/main.yml),
 and the debug APK can be downloaded from the `xpra-client-android-debug` artifact of a run.
-You can also build it yourself with `./gradlew assembleDebug` (JDK 17 and the Android SDK are needed).
+You can also build it yourself with `./gradlew assembleDebug` (a JDK from 17 on, CI uses 25, and the Android SDK are needed).
 
 Releases for Google Play are built by CI from version tags, see [docs/releasing.md](docs/releasing.md).
 The app collects no data: see its [privacy policy](docs/privacy-policy.md).

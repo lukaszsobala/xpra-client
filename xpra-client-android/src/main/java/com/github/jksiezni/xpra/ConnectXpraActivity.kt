@@ -19,21 +19,23 @@ package com.github.jksiezni.xpra
 
 import android.os.Bundle
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withStarted
 import com.github.jksiezni.xpra.client.ConnectionErrors
 import com.github.jksiezni.xpra.client.ConnectionEventListener
+import com.github.jksiezni.xpra.client.LocalNetwork
 import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.config.ConfigDatabase
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.databinding.ActivityConnectBinding
 import com.github.jksiezni.xpra.ssh.SshUserInfoHandler
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
-import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.IOException
 
@@ -42,14 +44,17 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
 
     private val serviceBinderFragment by lazy { ServiceBinderFragment.obtain(this) }
 
-    private val disposables = CompositeDisposable()
-
     private lateinit var binding: ActivityConnectBinding
 
     private var userInfoHandler: SshUserInfoHandler? = null
 
     /** the server this screen connects to, until connected */
     private var connecting: ServerDetails? = null
+
+    private var localNetworkAnswer: CompletableDeferred<Boolean>? = null
+    private val localNetworkRequest = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        localNetworkAnswer?.complete(granted)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,28 +71,48 @@ class ConnectXpraActivity : AppCompatActivity(), ConnectionEventListener {
             val db = ConfigDatabase.getInstance()
             val id = intent.getIntExtra(EXTRA_CONNECTION_ID, 0)
 
-            db.configs.getById(id)
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                            { connection: ServerDetails ->
-                                title = connection.name
-                                val userInfo = SshUserInfoHandler(this, connection)
-                                userInfoHandler = userInfo
-                                connecting = connection
-                                api.connect(connection, userInfo)
-                            },
-                            { throwable: Throwable? ->
-                                Timber.e(throwable)
-                                finish()
-                            })
-                    .addTo(disposables)
+            // cancelled with the screen
+            lifecycleScope.launch {
+                val connection = try {
+                    db.configs.getById(id)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: RuntimeException) {
+                    Timber.e(e, "cannot read the server %d", id)
+                    null
+                }
+                if (connection == null) {
+                    Timber.w("no server %d", id)
+                    finish()
+                    return@launch
+                }
+                title = connection.name
+                askForLocalNetwork(connection)
+                val userInfo = SshUserInfoHandler(this@ConnectXpraActivity, connection)
+                userInfoHandler = userInfo
+                connecting = connection
+                api.connect(connection, userInfo)
+            }
         }
+    }
+
+    /**
+     * Asks for the local network permission of Android 17 when the server is on the local
+     * network. The connection is tried anyway: if it was refused, the error explains it.
+     */
+    private suspend fun askForLocalNetwork(server: ServerDetails) {
+        val host = server.host ?: return
+        if (LocalNetwork.isAllowed(this) || !withContext(Dispatchers.IO) { LocalNetwork.isLocal(host) }) {
+            return
+        }
+        val answer = CompletableDeferred<Boolean>()
+        localNetworkAnswer = answer
+        localNetworkRequest.launch(LocalNetwork.PERMISSION)
+        Timber.i("local network access allowed: %s", answer.await())
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        disposables.dispose()
         serviceBinderFragment.whenXpraAvailable { api ->
             api.unregisterConnectionListener(this)
             if (connecting != null && isFinishing) {

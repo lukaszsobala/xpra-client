@@ -41,7 +41,6 @@ import com.github.jksiezni.xpra.config.ConnectionType
 import com.github.jksiezni.xpra.config.ServerDetails
 import com.github.jksiezni.xpra.ssh.SshUserInfoHandler
 import com.jcraft.jsch.JSchException
-import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -352,12 +351,12 @@ class XpraService : Service() {
         }
         serverDetails.displayId = display
         val db = ConfigDatabase.getInstance()
-        db.configs.getById(serverDetails.id)
-            .subscribeOn(Schedulers.io())
-            .subscribe({ saved ->
+        ConfigDatabase.inBackground {
+            db.configs.getById(serverDetails.id)?.let { saved ->
                 saved.displayId = display
                 db.configs.save(saved)
-            }, { Timber.w(it, "Cannot save the display") })
+            }
+        }
     }
 
     private fun onConnect(serverDetails: ServerDetails) {

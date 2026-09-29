@@ -150,7 +150,7 @@ class AndroidXpraClient(private val context: Context) : XpraClient(0, 0, PICTURE
             mainHandler.post { learnIcon(androidWindow) }
         }
         windowsLiveData.postValue(windows.filter { !it.hasParent() })
-        listeners.forEach { it.onWindowCreated(window as AndroidXpraWindow) }
+        listeners.forEach { it.onWindowCreated(androidWindow) }
     }
 
     override fun onWindowMetadataUpdated(window: XpraWindow) {

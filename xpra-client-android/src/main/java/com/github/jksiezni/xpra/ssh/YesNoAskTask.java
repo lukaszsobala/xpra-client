@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 
+import com.github.jksiezni.xpra.R;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 class YesNoAskTask extends UiTask<String, Boolean> {
@@ -42,13 +43,13 @@ class YesNoAskTask extends UiTask<String, Boolean> {
         public YesNoDialog(Context ctx, String message) {
             super(ctx);
             setMessage(message);
-            setPositiveButton(android.R.string.yes, new OnClickListener() {
+            setPositiveButton(R.string.yes, new OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     postResult(true);
                 }
             });
-            setNegativeButton(android.R.string.no, new OnClickListener() {
+            setNegativeButton(R.string.no, new OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     postResult(false);

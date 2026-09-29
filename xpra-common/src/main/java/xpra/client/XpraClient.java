@@ -18,8 +18,8 @@
 
 package xpra.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -57,7 +57,7 @@ import xpra.protocol.packets.WindowMetadata;
 public abstract class XpraClient {
 
     public static final long PING_INTERVAL_MS = 5000;
-    private static final Logger LOGGER = LoggerFactory.getLogger(XpraClient.class);
+    private static final Logger LOGGER = Logger.getLogger(XpraClient.class.getName());
 
     // read by the UI, while the packets change it
     private final Map<Integer, XpraWindow> windows = new ConcurrentHashMap<>();
@@ -164,7 +164,7 @@ public abstract class XpraClient {
                 if (xpraWindow != null) {
                     xpraWindow.onDraw(packet);
                 } else {
-                    LOGGER.error("Missing window when handling: " + packet);
+                    LOGGER.severe("Missing window when handling: " + packet);
                     //XpraWindow.sendDamageSequence(sender, packet, 0);
                 }
             }
@@ -400,7 +400,7 @@ public abstract class XpraClient {
     }
 
     public void onConnectionError(IOException e) {
-        LOGGER.error("connection error", e);
+        LOGGER.log(Level.SEVERE, "connection error", e);
     }
 
     /**
@@ -508,7 +508,7 @@ public abstract class XpraClient {
                     break;
                 }
             }
-            LOGGER.debug(response.toString());
+            LOGGER.fine(response.toString());
         }
     }
 

@@ -31,7 +31,6 @@ java {
 dependencies {
     implementation project(':xpra-common')
 
-    implementation 'org.slf4j:slf4j-simple:1.7.36'
 
     testImplementation 'junit:junit:4.13.2'
 }

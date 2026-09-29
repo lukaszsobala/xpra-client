@@ -25,15 +25,14 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Logger;
 
 import xpra.client.XpraClient;
 import xpra.client.XpraConnector;
 import xpra.protocol.packets.Disconnect;
 
 public class TcpXpraConnector extends XpraConnector implements Runnable {
-    private static final Logger logger = LoggerFactory.getLogger(TcpXpraConnector.class);
+    private static final Logger logger = Logger.getLogger(TcpXpraConnector.class.getName());
 
     /**
      * A connection without any packet for this long is dead: without this, a connection lost

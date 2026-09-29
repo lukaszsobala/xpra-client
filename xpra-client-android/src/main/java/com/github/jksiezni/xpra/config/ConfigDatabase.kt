@@ -25,6 +25,12 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  *
@@ -40,6 +46,10 @@ abstract class ConfigDatabase : RoomDatabase() {
 
     companion object {
         private var instance: ConfigDatabase? = null
+
+        /** for the work which outlives the screen that asked for it, ie: saving a server */
+        private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO +
+            CoroutineExceptionHandler { _, e -> Timber.w(e, "cannot update the saved servers") })
 
         /**
          * Adds the resolution setting, keeping the saved connections.
@@ -85,6 +95,14 @@ abstract class ConfigDatabase : RoomDatabase() {
                     .fallbackToDestructiveMigration(dropAllTables = false)
                     .build()
             }
+        }
+
+        /**
+         * Runs [block] off the main thread, until it completes: it is not cancelled with the
+         * screen which started it. The errors are logged.
+         */
+        fun inBackground(block: suspend CoroutineScope.() -> Unit) {
+            background.launch(block = block)
         }
 
         /** set up by [setup] when the app starts */

@@ -24,7 +24,9 @@ import android.os.Bundle
 import android.view.*
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import com.github.jksiezni.xpra.ConnectXpraActivity
 import com.github.jksiezni.xpra.R
@@ -34,14 +36,11 @@ import com.github.jksiezni.xpra.client.ServiceBinderFragment
 import com.github.jksiezni.xpra.connection.ActiveConnectionFragment
 import com.github.jksiezni.xpra.databinding.ServersFragmentBinding
 import com.github.jksiezni.xpra.help.HowToUse
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
 import timber.log.Timber
 import java.io.IOException
 
 class ServersListFragment : Fragment() {
 
-    private val disposables = CompositeDisposable()
     private val service by lazy { ServiceBinderFragment.obtain(activity) }
     private val adapter = ServerDetailsAdapter()
 
@@ -81,14 +80,27 @@ class ServersListFragment : Fragment() {
         floatingButton.setOnClickListener { newConnection() }
         binding.howToUseButton.setOnClickListener { HowToUse.show(requireContext()) }
         binding.serversList.adapter = adapter
-        adapter.secondaryAction.subscribe { item ->
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.servers_menu, menu)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean = when (menuItem.itemId) {
+                R.id.action_background_running -> {
+                    BackgroundRunning.request(requireActivity())
+                    true
+                }
+                else -> false
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+        adapter.onSecondaryAction = { item ->
             if (adapter.isConnected(item)) {
                 service.whenXpraAvailable { it.disconnect() }
             } else {
                 editConnection(item)
             }
-        }.addTo(disposables)
-        adapter.primaryAction.subscribe { item ->
+        }
+        adapter.onPrimaryAction = { item ->
             when {
                 adapter.isConnected(item) -> {
                     openActiveConnection()
@@ -103,7 +115,7 @@ class ServersListFragment : Fragment() {
                     connectLauncher.launch(intent)
                 }
             }
-        }.addTo(disposables)
+        }
 
         val viewModel = ViewModelProvider(this)[ServerDetailsViewModel::class.java]
         updateServersList(viewModel.getAllServers().value)
@@ -118,23 +130,10 @@ class ServersListFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        disposables.clear()
+        adapter.onPrimaryAction = null
+        adapter.onSecondaryAction = null
         service.whenXpraAvailable { s ->
             s.unregisterConnectionListener(connectionListener)
-        }
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.servers_menu, menu)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_background_running -> {
-                BackgroundRunning.request(requireActivity())
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
         }
     }
 
@@ -172,9 +171,5 @@ class ServersListFragment : Fragment() {
                 .replace(id, ServerDetailsFragment.create(connection))
                 .addToBackStack(null)
                 .commit()
-    }
-
-    init {
-        setHasOptionsMenu(true)
     }
 }
