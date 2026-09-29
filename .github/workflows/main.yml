@@ -23,15 +23,24 @@ jobs:
         with:
           # the open source (MIT) cache, rather than the proprietary "enhanced" one
           cache-provider: basic
-      # the release bundle is unsigned here: it checks that a release builds (ie: its lint checks)
+      # the release is signed with the debug key here: it checks that a release builds (ie: its
+      # lint checks and R8), and its APK can be tried out
       - name: Build and run unit tests
         # lists the deprecations, rather than only saying there are some
-        run: ./gradlew --warning-mode all assembleDebug bundleRelease test
+        run: ./gradlew --warning-mode all assembleDebug assembleRelease bundleRelease test
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
           name: xpra-client-android-debug
           path: xpra-client-android/build/outputs/apk/debug/*.apk
+      - name: Upload release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: xpra-client-android-release-apk
+          # the mapping gives back the names in the stack traces of the release
+          path: |
+            xpra-client-android/build/outputs/apk/release/*.apk
+            xpra-client-android/build/outputs/mapping/release/mapping.txt
 
   # Builds the bundle to upload to Google Play, signed with the upload key, for the tags
   # of versions (ie: v1.0). The key comes from the secrets of the repository, see docs/releasing.md

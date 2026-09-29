@@ -77,10 +77,13 @@ android {
             signingConfig = signingConfigs.debug
         }
         release {
-            // without the upload key, ie: on forks or pull requests, the bundle is left unsigned
-            if (signingConfigs.release.storeFile != null) {
-                signingConfig = signingConfigs.release
-            }
+            // without the upload key, ie: on forks or pull requests, the release is signed with
+            // the debug key: its APK can be installed (over the debug one), but not uploaded to Google Play
+            signingConfig = signingConfigs.release.storeFile != null ? signingConfigs.release : signingConfigs.debug
+            // R8 removes the unused code and resources, and optimizes the rest
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
@@ -93,10 +96,16 @@ android {
         // BuildConfig.DEBUG: release builds log less, see XpraApplication
         buildConfig = true
     }
+    androidResources {
+        // the app is in English: the translations of the libraries (AppCompat, Material...)
+        // would only mix other languages into it
+        localeFilters += ['en']
+    }
     packaging {
         resources {
-            // OSGi/JPMS metadata of multi-release jars (JSch, JSpecify), unused on Android
-            excludes += ['META-INF/versions/9/OSGI-INF/MANIFEST.MF', 'META-INF/versions/*/module-info.class']
+            // the classes for newer Javas of multi-release jars (JSch, JSpecify), and their
+            // OSGi/JPMS metadata: Android never loads them
+            excludes += ['META-INF/versions/**']
         }
     }
 }
