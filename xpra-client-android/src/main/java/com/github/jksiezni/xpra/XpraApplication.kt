@@ -37,7 +37,7 @@ class XpraApplication : Application() {
         Timber.plant(if (BuildConfig.DEBUG) Timber.DebugTree() else ReleaseTree())
         logToTimber()
         ConfigDatabase.inBackground {
-            SshKeys.cleanUp(this, ConfigDatabase.getInstance().configs)
+            SshKeys.cleanUp(this@XpraApplication, ConfigDatabase.getInstance().configs)
         }
     }
 
