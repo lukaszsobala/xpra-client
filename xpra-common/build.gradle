@@ -34,7 +34,7 @@ dependencies {
     api 'org.slf4j:slf4j-api:1.7.36'
     // Maintained fork of JSch (same com.jcraft.jsch API) supporting modern
     // OpenSSH key and signature algorithms (ed25519, rsa-sha2-*)
-    api 'com.github.mwiede:jsch:0.2.25'
+    api 'com.github.mwiede:jsch:2.28.7'
 
     testImplementation 'junit:junit:4.13.2'
 }
